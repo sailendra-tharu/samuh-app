@@ -34,9 +34,6 @@ function Login() {
             onSuccess: (response) => {
                 console.log("Login successful:", response);
                 navigate("/dashboard");
-
-                // redirect here
-                // navigate("/dashboard");
             },
 
             onError: (error) => {
