@@ -1,7 +1,7 @@
-function App(){
-  return (
-    <div className="bg-green-100">Hello, World!</div>
-  );
+import Login from "./pages/auth/Login/login";
+
+function App() {
+  return <Login />;
 }
 
 export default App;
