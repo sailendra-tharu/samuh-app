@@ -1,46 +1,41 @@
 import { lazy } from "react";
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 
 import Layout from "@/layout/applayout";
 
+import ProtectedRoute from "./privateRoutes";
+import PublicRoute from "./publicRoutes";
 
-const Login = lazy(
-  () => import("@/pages/auth/Login/login")
-);
-
-
-const Dashboard = lazy(
-  () => import("@/pages/Dashboard/dashboard")
-);
-
-
+const Login = lazy(() => import("@/pages/Auth/login/login"));
+const Dashboard = lazy(() => import("@/pages/Dashboard/dashboard"));
 
 export const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <Navigate to="/dashboard" replace />,
+  },
 
   {
     path: "/login",
-    element: <Login />,
+    element: (
+      <PublicRoute>
+        <Login />
+      </PublicRoute>
+    ),
   },
-
 
   {
     path: "/",
-    element: <Layout />,
-
+    element: (
+      <ProtectedRoute>
+        <Layout />
+      </ProtectedRoute>
+    ),
     children: [
-
-      {
-        index: true,
-        element: <Dashboard />,
-      },
-
-
       {
         path: "dashboard",
         element: <Dashboard />,
-      }
-
-    ]
-  }
-
+      },
+    ],
+  },
 ]);
