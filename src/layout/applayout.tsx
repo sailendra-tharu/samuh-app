@@ -2,9 +2,13 @@ import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import { Menu } from "lucide-react";
 import Sidebar from "./sidebar";
+import { useLocation } from "react-router-dom";
+
 
 function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+    const location = useLocation();
+
 
   return (
     <div className="h-screen w-screen flex overflow-hidden bg-gray-100">
@@ -26,7 +30,8 @@ function Layout() {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-4">
+        <main className="flex-1 overflow-y-auto p-4 space-y-5">
+          <header className="text-4xl text-green-700">{location.pathname.split("/").map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(" ")}</header>
           <Outlet />
         </main>
       </div>
