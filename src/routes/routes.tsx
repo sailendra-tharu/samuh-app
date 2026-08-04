@@ -1,14 +1,15 @@
 import { lazy } from "react";
+import Layout from "@/layout/applayout";
+import PublicRoute from "./publicRoutes";
+import ProtectedRoute from "./privateRoutes";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 
-import Layout from "@/layout/applayout";
 
-import ProtectedRoute from "./privateRoutes";
-import PublicRoute from "./publicRoutes";
-
+const Loans = lazy(() => import("@/pages/Loans/loans"));
+const Members = lazy(() => import("@/pages/Member/member"));
+const Savings = lazy(() => import("@/pages/Saving/saving"));
 const Login = lazy(() => import("@/pages/Auth/login/login"));
 const Dashboard = lazy(() => import("@/pages/Dashboard/dashboard"));
-const Members = lazy(() => import("@/pages/Member/member"));
 
 
 export const router = createBrowserRouter([
@@ -41,6 +42,14 @@ export const router = createBrowserRouter([
        {
         path: "members",
         element: <Members />,
+      },
+       {
+        path: "savings",
+        element: <Savings />,
+      },
+       {
+        path: "loans",
+        element: <Loans />,
       },
     ],
   },

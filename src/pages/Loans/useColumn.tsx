@@ -3,28 +3,44 @@ import { createColumnHelper } from "@tanstack/react-table";
 const helper = createColumnHelper();
 
 export const userColumns = [
+    helper.accessor("sn", {
+    header: "SN",
+    cell: (info) => info.getValue(),
+  }),
   helper.accessor("name", {
     header: "Name",
     cell: (info) => info.getValue(),
   }),
 
-  helper.accessor("email", {
-    header: "Email",
+  helper.accessor("date", {
+    header: "Date",
     cell: (info) => info.getValue(),
   }),
 
-  helper.accessor("phone", {
-    header: "Phone",
+  helper.accessor("description", {
+    header: "Description",
     cell: (info) => info.getValue(),
   }),
 
-  helper.accessor("group", {
-    header: "Group",
+  helper.accessor("principle-amount", {
+    header: "Principle Amount",
     cell: (info) => info.getValue(),
   }),
 
-  helper.accessor("joinDate", {
-    header: "Join Date",
+  helper.accessor("fine-in", {
+    header: "Fine In",
+    cell: (info) => info.getValue(),
+  }),
+  helper.accessor("fine-out", {
+    header: "Fine Out",
+    cell: (info) => info.getValue(),
+  }),
+  helper.accessor("interest", {
+    header: "Interest",
+    cell: (info) => info.getValue(),
+  }),
+  helper.accessor("ime-loan", {
+    header: "IME Loan",
     cell: (info) => info.getValue(),
   }),
 

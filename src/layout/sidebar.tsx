@@ -26,6 +26,11 @@ const menuItems = [
     icon: Wallet,
     path: "/savings",
   },
+  {
+    name: "Loans",
+    icon: Wallet,
+    path: "/loans",
+  },
 ];
 
 const quickActions = [
