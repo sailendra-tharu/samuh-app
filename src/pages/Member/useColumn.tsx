@@ -1,6 +1,14 @@
 import { createColumnHelper } from "@tanstack/react-table";
 
-const helper = createColumnHelper();
+export type Member = {
+  name: string;
+  email: string;
+  phone: string;
+  group: string;
+  joinDate: string;
+};
+
+const helper = createColumnHelper<Member>();
 
 export const userColumns = [
   helper.accessor("name", {
@@ -34,14 +42,14 @@ export const userColumns = [
     cell: ({ row }) => (
       <div className="flex gap-2">
         <button
-          className="rounded bg-blue-500 px-3 py-1 text-white hover:bg-blue-600"
+          className="rounded bg-blue-500 px-3 py-1 text-white"
           onClick={() => console.log("Edit", row.original)}
         >
           Edit
         </button>
 
         <button
-          className="rounded bg-red-500 px-3 py-1 text-white hover:bg-red-600"
+          className="rounded bg-red-500 px-3 py-1 text-white"
           onClick={() => console.log("Delete", row.original)}
         >
           Delete

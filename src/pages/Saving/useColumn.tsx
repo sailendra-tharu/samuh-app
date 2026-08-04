@@ -1,12 +1,25 @@
 import { createColumnHelper } from "@tanstack/react-table";
 
-const helper = createColumnHelper();
+export type Saving = {
+  sn: number;
+  name: string;
+  date: string;
+  description: string;
+  newMember: number;
+  fineIn: number;
+  fineOut: number;
+  payment: number;
+  received: number;
+};
+
+const helper = createColumnHelper<Saving>();
 
 export const userColumns = [
-    helper.accessor("sn", {
+  helper.accessor("sn", {
     header: "SN",
     cell: (info) => info.getValue(),
   }),
+
   helper.accessor("name", {
     header: "Name",
     cell: (info) => info.getValue(),
@@ -22,23 +35,26 @@ export const userColumns = [
     cell: (info) => info.getValue(),
   }),
 
-  helper.accessor("new-member", {
+  helper.accessor("newMember", {
     header: "New Member",
     cell: (info) => info.getValue(),
   }),
 
-  helper.accessor("fine-in", {
+  helper.accessor("fineIn", {
     header: "Fine In",
     cell: (info) => info.getValue(),
   }),
-  helper.accessor("fine-out", {
+
+  helper.accessor("fineOut", {
     header: "Fine Out",
     cell: (info) => info.getValue(),
   }),
+
   helper.accessor("payment", {
     header: "Payment",
     cell: (info) => info.getValue(),
   }),
+
   helper.accessor("received", {
     header: "Received",
     cell: (info) => info.getValue(),

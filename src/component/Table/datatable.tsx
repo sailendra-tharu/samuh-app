@@ -2,9 +2,18 @@ import {
   useReactTable,
   getCoreRowModel,
   flexRender,
+  type ColumnDef,
 } from "@tanstack/react-table";
 
-export default function DataTable({ columns, data }) {
+interface DataTableProps<TData> {
+  columns: ColumnDef<TData, any>[];
+  data: TData[];
+}
+
+export default function DataTable<TData>({
+  columns,
+  data,
+}: DataTableProps<TData>) {
   const table = useReactTable({
     columns,
     data,
@@ -36,7 +45,7 @@ export default function DataTable({ columns, data }) {
           {table.getRowModel().rows.map((row) => (
             <tr
               key={row.id}
-              className="hover:bg-gray-50 transition-colors"
+              className="transition-colors hover:bg-gray-50"
             >
               {row.getVisibleCells().map((cell) => (
                 <td

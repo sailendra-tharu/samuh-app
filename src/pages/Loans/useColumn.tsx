@@ -1,12 +1,27 @@
-import { createColumnHelper } from "@tanstack/react-table";
+import {
+  createColumnHelper,
+} from "@tanstack/react-table";
 
-const helper = createColumnHelper();
+export type Loan = {
+  sn: number;
+  name: string;
+  date: string;
+  description: string;
+  principleAmount: number;
+  fineIn: number;
+  fineOut: number;
+  interest: number;
+  imeLoan: number;
+};
+
+const helper = createColumnHelper<Loan>();
 
 export const userColumns = [
-    helper.accessor("sn", {
+  helper.accessor("sn", {
     header: "SN",
     cell: (info) => info.getValue(),
   }),
+
   helper.accessor("name", {
     header: "Name",
     cell: (info) => info.getValue(),
@@ -22,24 +37,27 @@ export const userColumns = [
     cell: (info) => info.getValue(),
   }),
 
-  helper.accessor("principle-amount", {
+  helper.accessor("principleAmount", {
     header: "Principle Amount",
     cell: (info) => info.getValue(),
   }),
 
-  helper.accessor("fine-in", {
+  helper.accessor("fineIn", {
     header: "Fine In",
     cell: (info) => info.getValue(),
   }),
-  helper.accessor("fine-out", {
+
+  helper.accessor("fineOut", {
     header: "Fine Out",
     cell: (info) => info.getValue(),
   }),
+
   helper.accessor("interest", {
     header: "Interest",
     cell: (info) => info.getValue(),
   }),
-  helper.accessor("ime-loan", {
+
+  helper.accessor("imeLoan", {
     header: "IME Loan",
     cell: (info) => info.getValue(),
   }),
@@ -49,19 +67,8 @@ export const userColumns = [
     header: "Action",
     cell: ({ row }) => (
       <div className="flex gap-2">
-        <button
-          className="rounded bg-blue-500 px-3 py-1 text-white hover:bg-blue-600"
-          onClick={() => console.log("Edit", row.original)}
-        >
-          Edit
-        </button>
-
-        <button
-          className="rounded bg-red-500 px-3 py-1 text-white hover:bg-red-600"
-          onClick={() => console.log("Delete", row.original)}
-        >
-          Delete
-        </button>
+        <button onClick={() => console.log(row.original)}>Edit</button>
+        <button onClick={() => console.log(row.original)}>Delete</button>
       </div>
     ),
   }),
