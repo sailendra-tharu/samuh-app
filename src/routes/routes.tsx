@@ -8,6 +8,8 @@ import PublicRoute from "./publicRoutes";
 
 const Login = lazy(() => import("@/pages/Auth/login/login"));
 const Dashboard = lazy(() => import("@/pages/Dashboard/dashboard"));
+const Members = lazy(() => import("@/pages/Member/member"));
+
 
 export const router = createBrowserRouter([
   {
@@ -35,6 +37,10 @@ export const router = createBrowserRouter([
       {
         path: "dashboard",
         element: <Dashboard />,
+      },
+       {
+        path: "members",
+        element: <Members />,
       },
     ],
   },

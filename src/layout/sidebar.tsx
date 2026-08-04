@@ -3,39 +3,28 @@ import {
   Home,
   Users,
   Wallet,
-  Landmark,
-  BarChart3,
-  Settings,
   UserPlus,
   FilePlus,
   CreditCard,
   LogOut,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 const menuItems = [
   {
     name: "Dashboard",
     icon: Home,
+    path: "/dashboard",
   },
   {
     name: "Members",
     icon: Users,
+    path: "/members",
   },
   {
     name: "Savings",
     icon: Wallet,
-  },
-  {
-    name: "Loans",
-    icon: Landmark,
-  },
-  {
-    name: "Reports & Analytics",
-    icon: BarChart3,
-  },
-  {
-    name: "Settings",
-    icon: Settings,
+    path: "/savings",
   },
 ];
 
@@ -58,10 +47,12 @@ const quickActions = [
 function Sidebar() {
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const location = useLocation();
+
 
   const handleLogout = async () => {
     try {
-      await logout();          // Calls supabase.auth.signOut()
+      await logout();
       navigate("/login", { replace: true });
     } catch (error) {
       console.error(error);
@@ -91,14 +82,14 @@ function Sidebar() {
       <nav className="flex-1 px-4 py-6">
 
         <div className="space-y-2">
-          {menuItems.map((item, index) => {
+          {menuItems.map((item,) => {
             const Icon = item.icon;
 
             return (
               <button
                 key={item.name}
-                className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg text-sm
-                ${index === 0
+                onClick={() => navigate(item.path)}
+                className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg text-sm ${location.pathname === item.path
                     ? "bg-emerald-500"
                     : "hover:bg-white/10"
                   }`}
