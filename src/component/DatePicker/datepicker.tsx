@@ -1,249 +1,482 @@
-import { useState, useRef, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
+"use client";
 
-interface DatePickerProps {
-  value: string;
-  onChange: (date: string) => void;
+import { useEffect, useMemo, useRef, useState } from "react";
+import NepaliDate from "nepali-date-converter";
+import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+
+import { cn } from "@/lib/utils";
+
+const monthNames = [
+  "Baisakh",
+  "Jestha",
+  "Asar",
+  "Shrawan",
+  "Bhadra",
+  "Aswin",
+  "Kartik",
+  "Mangsir",
+  "Poush",
+  "Magh",
+  "Falgun",
+  "Chaitra",
+];
+
+const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+type SelectedDate = {
+  year: number;
+  month: number;
+  date: number;
+};
+
+const parseBSDate = (dateString?: string): SelectedDate | null => {
+  if (!dateString) return null;
+
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateString);
+  if (!match) return null;
+
+  const [, year, month, date] = match;
+
+  return {
+    year: Number(year),
+    month: Number(month) - 1,
+    date: Number(date),
+  };
+};
+
+interface BSDatePickerProps {
+  value?: string;
+  onChange?: (value: string) => void;
   placeholder?: string;
+  label?: string;
+  disabled?: boolean;
+  error?: string;
+  className?: string;
 }
 
-// BS to AD conversion
-const bsToAd = (bsYear: number, bsMonth: number, bsDay: number): Date => {
-  const bsMonthDays = [31, 32, 31, 32, 31, 30, 29, 30, 31, 30, 31, 30];
-  
-  let totalDays = bsDay;
-  for (let i = 0; i < bsMonth - 1; i++) {
-    totalDays += bsMonthDays[i];
-  }
-  
-  // BS 2000-01-01 is approximately AD 1943-04-14
-  const bsBase = 2000;
-  const adBase = new Date(1943, 3, 14);
-  const baseAd = adBase.getTime();
-  const oneDayMs = 24 * 60 * 60 * 1000;
-  
-  // Calculate days from BS 2000/1/1
-  let dayCount = 0;
-  for (let year = bsBase; year < bsYear; year++) {
-    dayCount += 365;
-    if ((year + 56) % 4 === 0) dayCount++;
-  }
-  
-  dayCount += totalDays - 1;
-  const resultDate = new Date(baseAd + dayCount * oneDayMs);
-  
-  return resultDate;
-};
-
-// AD to BS conversion
-const adToBs = (date: Date): { year: number; month: number; day: number } => {
-  // BS 2000-01-01 is approximately AD 1943-04-14
-  const bsBase = 2000;
-  const adBase = new Date(1943, 3, 14);
-  const baseAd = adBase.getTime();
-  const oneDayMs = 24 * 60 * 60 * 1000;
-  
-  const daysDiff = Math.floor((date.getTime() - baseAd) / oneDayMs);
-  
-  const bsMonthDays = [31, 32, 31, 32, 31, 30, 29, 30, 31, 30, 31, 30];
-  
-  let bsYear = bsBase;
-  let remainingDays = daysDiff;
-  
-  while (remainingDays >= 365) {
-    const isLeap = (bsYear + 56) % 4 === 0 ? 1 : 0;
-    const daysInYear = 365 + isLeap;
-    if (remainingDays >= daysInYear) {
-      remainingDays -= daysInYear;
-      bsYear++;
-    } else {
-      break;
-    }
-  }
-  
-  let bsMonth = 1;
-  let bsDay = remainingDays + 1;
-  
-  for (let i = 0; i < 12; i++) {
-    if (bsDay <= bsMonthDays[i]) {
-      bsMonth = i + 1;
-      break;
-    }
-    bsDay -= bsMonthDays[i];
-  }
-  
-  return { year: bsYear, month: bsMonth, day: bsDay };
-};
-
-export default function DatePicker({
+export default function BSDatePicker({
   value,
   onChange,
-  placeholder = "Select date",
-}: DatePickerProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [currentBsYear, setCurrentBsYear] = useState(
-    value ? adToBs(new Date(value)).year : adToBs(new Date()).year
-  );
-  const [currentBsMonth, setCurrentBsMonth] = useState(
-    value ? adToBs(new Date(value)).month : adToBs(new Date()).month
-  );
-  const containerRef = useRef<HTMLDivElement>(null);
+  placeholder = "Select a date",
+  disabled = false,
+  error,
+  className,
+}: BSDatePickerProps) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const bsMonthDays = [31, 32, 31, 32, 31, 30, 29, 30, 31, 30, 31, 30];
-  const bsMonthNames = [
-    "Baishakh",
-    "Jyaishtha",
-    "Aashadh",
-    "Shrawan",
-    "Bhadra",
-    "Ashwin",
-    "Kartik",
-    "Mangsir",
-    "Poush",
-    "Magh",
-    "Falgun",
-    "Chaitra",
-  ];
+  const todayBS = useMemo(() => NepaliDate.now(), []);
 
-  const getDaysInBsMonth = () => {
-    return bsMonthDays[currentBsMonth - 1];
-  };
+  const todayADStart = useMemo(() => {
+    const date = new Date();
 
-  const getFirstDayOfBsMonth = () => {
-    const adDate = bsToAd(currentBsYear, currentBsMonth, 1);
-    return adDate.getDay();
-  };
+    date.setHours(0, 0, 0, 0);
 
-  const handlePrevMonth = () => {
-    if (currentBsMonth === 1) {
-      setCurrentBsYear(currentBsYear - 1);
-      setCurrentBsMonth(12);
-    } else {
-      setCurrentBsMonth(currentBsMonth - 1);
-    }
-  };
-
-  const handleNextMonth = () => {
-    if (currentBsMonth === 12) {
-      setCurrentBsYear(currentBsYear + 1);
-      setCurrentBsMonth(1);
-    } else {
-      setCurrentBsMonth(currentBsMonth + 1);
-    }
-  };
-
-  const handleDateClick = (day: number) => {
-    const adDate = bsToAd(currentBsYear, currentBsMonth, day);
-    const formattedDate = adDate.toISOString().split("T")[0];
-    onChange(formattedDate);
-    setIsOpen(false);
-  };
-
-  const handleClickOutside = (e: MouseEvent) => {
-    if (
-      containerRef.current &&
-      !containerRef.current.contains(e.target as Node)
-    ) {
-      setIsOpen(false);
-    }
-  };
-
-  useEffect(() => {
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return date;
   }, []);
 
-  const days = [];
-  const firstDay = getFirstDayOfBsMonth();
-  const daysCount = getDaysInBsMonth();
+  const valueAsDate = useMemo(() => parseBSDate(value), [value]);
 
-  for (let i = 0; i < firstDay; i++) {
-    days.push(null);
-  }
+  const [viewYear, setViewYear] = useState(
+    valueAsDate?.year ?? todayBS.getYear()
+  );
+  const [viewMonth, setViewMonth] = useState(
+    valueAsDate?.month ?? todayBS.getMonth()
+  );
 
-  for (let i = 1; i <= daysCount; i++) {
-    days.push(i);
-  }
+  const [selected, setSelected] = useState<SelectedDate | null>(valueAsDate);
 
-  const selectedBs = value ? adToBs(new Date(value)) : null;
-  const isCurrentMonth =
-    selectedBs &&
-    selectedBs.year === currentBsYear &&
-    selectedBs.month === currentBsMonth;
+  const [open, setOpen] = useState(false);
+  const [yearOpen, setYearOpen] = useState(false);
 
-  const monthYear = `${bsMonthNames[currentBsMonth - 1]} ${currentBsYear}`;
+  useEffect(() => {
+    if (!valueAsDate) {
+      setSelected(null);
+      return;
+    }
+
+    setSelected(valueAsDate);
+    setViewYear(valueAsDate.year);
+    setViewMonth(valueAsDate.month);
+  }, [valueAsDate]);
+
+  /*
+   * Library supports BS 2000 - 2090.
+   * We only allow dates up to the current BS year.
+   */
+  const MIN_YEAR = 2000;
+  const MAX_YEAR = todayBS.getYear();
+
+  const years = useMemo(() => {
+    const result: number[] = [];
+
+    for (let year = MAX_YEAR; year >= MIN_YEAR; year--) {
+      result.push(year);
+    }
+
+    return result;
+  }, [MAX_YEAR]);
+
+  /*
+   * Calculate number of days in a BS month.
+   */
+  const daysInMonth = (year: number, month: number) => {
+    const start = new NepaliDate(year, month, 1);
+
+    const next = new NepaliDate(year, month, 1);
+    next.setMonth(month + 1);
+
+    return Math.round(
+      (next.toJsDate().getTime() - start.toJsDate().getTime()) /
+        86400000
+    );
+  };
+
+  /*
+   * Close calendar when clicking outside.
+   */
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        wrapperRef.current &&
+        !wrapperRef.current.contains(event.target as Node)
+      ) {
+        setOpen(false);
+        setYearOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  /*
+   * Select date.
+   */
+  const handleSelectDate = (date: number) => {
+    const picked = new NepaliDate(viewYear, viewMonth, date);
+
+    const formatted = picked.format("YYYY-MM-DD");
+
+    setSelected({
+      year: viewYear,
+      month: viewMonth,
+      date,
+    });
+
+    onChange?.(formatted);
+
+    setOpen(false);
+  };
+
+  /*
+   * Previous month.
+   */
+  const handlePreviousMonth = () => {
+    if (viewMonth === 0) {
+      if (viewYear <= MIN_YEAR) return;
+
+      setViewMonth(11);
+      setViewYear((prev:any) => prev - 1);
+    } else {
+      setViewMonth((prev:any) => prev - 1);
+    }
+  };
+
+  /*
+   * Next month.
+   */
+  const handleNextMonth = () => {
+    if (viewMonth === 11) {
+      if (viewYear >= MAX_YEAR) return;
+
+      setViewMonth(0);
+      setViewYear((prev:any) => prev + 1);
+    } else {
+      setViewMonth((prev:any) => prev + 1);
+    }
+  };
+
+  const handleYearChange = (year: number) => {
+    setViewYear(year);
+    setYearOpen(false);
+
+    if (!selected) return;
+
+    const date = Math.min(
+      selected.date,
+      daysInMonth(year, selected.month)
+    );
+    const picked = new NepaliDate(year, selected.month, date);
+
+    setSelected({
+      year,
+      month: selected.month,
+      date,
+    });
+    onChange?.(picked.format("YYYY-MM-DD"));
+  };
+
+  /*
+   * Check whether date is today/future.
+   */
+  const isDateDisabled = (date: number) => {
+    const cell = new NepaliDate(viewYear, viewMonth, date);
+
+    const cellAD = cell.toJsDate();
+
+    cellAD.setHours(0, 0, 0, 0);
+
+    return cellAD >= todayADStart;
+  };
+
+  /*
+   * Display selected date.
+   */
+  const displayValue = useMemo(() => {
+    if (!value) return "";
+
+    try {
+      const [year, month, date] = value.split("-").map(Number);
+
+      if (!year || month === undefined || !date) return value;
+
+      const nepaliDate = new NepaliDate(
+        year,
+        month - 1,
+        date
+      );
+
+      return nepaliDate.format("ddd, DD MMMM YYYY");
+    } catch {
+      return value;
+    }
+  }, [value]);
+
+  /*
+   * Render calendar days.
+   */
+  const calendarDays = useMemo(() => {
+    const start = new NepaliDate(viewYear, viewMonth, 1);
+
+    const startWeekday = start.getDay();
+
+    const totalDays = daysInMonth(viewYear, viewMonth);
+
+    const days: Array<number | null> = [];
+
+    // Empty cells before first day
+    for (let i = 0; i < startWeekday; i++) {
+      days.push(null);
+    }
+
+    // Actual days
+    for (let day = 1; day <= totalDays; day++) {
+      days.push(day);
+    }
+
+    return days;
+  }, [viewYear, viewMonth]);
 
   return (
-    <div ref={containerRef} className="relative w-full">
+    <div
+      ref={wrapperRef}
+      className={cn("relative w-full", className)}
+    >
+
+      {/* Input */}
       <div className="relative">
         <input
           type="text"
-          value={
-            selectedBs
-              ? `${selectedBs.day} ${bsMonthNames[selectedBs.month - 1]} ${selectedBs.year}`
-              : ""
-          }
-          placeholder={placeholder}
           readOnly
-          onClick={() => setIsOpen(!isOpen)}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 cursor-pointer focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none pr-10"
+          value={displayValue}
+          placeholder={placeholder}
+          disabled={disabled}
+          onClick={() => {
+            if (!disabled) {
+              setOpen((prev) => !prev);
+              setYearOpen(false);
+            }
+          }}
+          className={cn(
+            "h-10 w-full cursor-pointer rounded-lg border border-gray-300 bg-white px-3 py-2 pr-10 text-sm outline-none",
+            "focus:border-blue-500 focus:ring-2 focus:ring-blue-200",
+            error
+              ? "border-red-500"
+              : "border-gray-300",
+            disabled &&
+              "cursor-not-allowed opacity-50"
+          )}
         />
-        <Calendar
-          size={20}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-        />
+
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => {
+            if (!disabled) {
+              setOpen((prev) => !prev);
+              setYearOpen(false);
+            }
+          }}
+          className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center text-muted-foreground"
+        >
+          <CalendarDays size={18} />
+        </button>
       </div>
 
-      {isOpen && (
-        <div className="absolute bottom-full left-0 mb-1 bg-white border border-gray-300 rounded-lg shadow-lg p-4 z-10 w-72">
-          <div className="flex items-center justify-between mb-4">
+      {/* Error */}
+      {error && (
+        <p className="mt-1 text-xs text-red-500">
+          {error}
+        </p>
+      )}
+
+      {/* Calendar */}
+      {open && !disabled && (
+        <div className="absolute bottom-full left-0 z-[1055] mb-1 w-[320px] rounded-lg border border-gray-300 bg-white p-3 shadow-lg">
+          {/* Header */}
+          <div className="mb-3 flex items-center justify-between gap-2">
             <button
-              onClick={handlePrevMonth}
-              className="p-1 hover:bg-gray-100 rounded"
+              type="button"
+              onClick={handlePreviousMonth}
+              disabled={
+                viewYear === MIN_YEAR &&
+                viewMonth === 0
+              }
+              className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <ChevronLeft size={20} />
+              <ChevronLeft size={16} />
             </button>
-            <h3 className="text-sm font-semibold">{monthYear}</h3>
+
+            <div className="flex flex-1 gap-2">
+              {/* Month */}
+              <select
+                value={viewMonth}
+                onChange={(e) =>
+                  setViewMonth(Number(e.target.value))
+                }
+                className="h-8 min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-2 text-sm"
+              >
+                {monthNames.map((month, index) => (
+                  <option
+                    key={month}
+                    value={index}
+                  >
+                    {month}
+                  </option>
+                ))}
+              </select>
+
+              {/* Year */}
+              <div className="relative w-[90px]">
+                <button
+                  type="button"
+                  aria-haspopup="listbox"
+                  aria-expanded={yearOpen}
+                  onClick={() => setYearOpen((prev) => !prev)}
+                  className="h-8 w-full rounded-md border border-gray-300 bg-white px-2 text-left text-sm"
+                >
+                  {viewYear}
+                </button>
+
+                {yearOpen && (
+                  <div
+                    role="listbox"
+                    aria-label="Select year"
+                    className="absolute left-0 top-full z-20 mt-1 max-h-40 w-full overflow-y-auto rounded-md border border-gray-300 bg-white p-1 shadow-md"
+                  >
+                    {years.map((year) => (
+                      <button
+                        key={year}
+                        type="button"
+                        role="option"
+                        aria-selected={year === viewYear}
+                        onClick={() => {
+                          handleYearChange(year);
+                        }}
+                        className={cn(
+                          "w-full rounded px-2 py-1 text-left text-sm hover:bg-muted",
+                          year === viewYear &&
+                            "bg-primary text-primary-foreground"
+                        )}
+                      >
+                        {year}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
             <button
+              type="button"
               onClick={handleNextMonth}
-              className="p-1 hover:bg-gray-100 rounded"
+              disabled={
+                viewYear === MAX_YEAR &&
+                viewMonth === todayBS.getMonth()
+              }
+              className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <ChevronRight size={20} />
+              <ChevronRight size={16} />
             </button>
           </div>
 
-          <div className="grid grid-cols-7 gap-2 mb-2">
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+          {/* Weekdays */}
+          <div className="grid grid-cols-7 gap-1">
+            {weekdays.map((day) => (
               <div
                 key={day}
-                className="text-center text-xs font-semibold text-gray-600"
+                className="py-1 text-center text-xs font-semibold text-muted-foreground"
               >
                 {day}
               </div>
             ))}
+
+            {/* Dates */}
+            {calendarDays.map((day, index) => {
+              if (day === null) {
+                return (
+                  <div key={`empty-${index}`} />
+                );
+              }
+
+              const dateDisabled =
+                isDateDisabled(day);
+
+              const isSelected =
+                selected?.year === viewYear &&
+                selected?.month === viewMonth &&
+                selected?.date === day;
+
+              return (
+                <button
+                  key={day}
+                  type="button"
+                  disabled={dateDisabled}
+                  onClick={() =>
+                    handleSelectDate(day)
+                  }
+                  className={cn(
+                    "h-9 w-9 rounded-md text-sm transition-colors",
+                    "hover:bg-muted",
+                    dateDisabled &&
+                      "cursor-not-allowed text-muted-foreground opacity-40",
+                    isSelected &&
+                      "bg-primary text-primary-foreground hover:bg-primary"
+                  )}
+                >
+                  {day}
+                </button>
+              );
+            })}
           </div>
 
-          <div className="grid grid-cols-7 gap-2">
-            {days.map((day, idx) => (
-              <button
-                key={idx}
-                onClick={() => day && handleDateClick(day)}
-                disabled={!day}
-                className={`
-                  h-8 rounded text-sm font-medium
-                  ${
-                    !day
-                      ? "text-gray-200 cursor-default"
-                      : isCurrentMonth && day === selectedBs?.day
-                      ? "bg-blue-500 text-white"
-                      : "hover:bg-blue-100 text-gray-700"
-                  }
-                `}
-              >
-                {day}
-              </button>
-            ))}
-          </div>
+          {/* Helper */}
+          <p className="mt-3 text-xs text-muted-foreground">
+            Only past B.S. dates can be selected.
+          </p>
         </div>
       )}
     </div>

@@ -34,6 +34,8 @@ function Member() {
 
     const [search, setSearch] = useState("");
 
+    const [saveError, setSaveError] = useState("");
+
 
 
 
@@ -69,21 +71,28 @@ function Member() {
 
 
 
-    const saveMember = (member: Member) => {
+    const saveMember = async (member: Member) => {
+        setSaveError("");
 
+        try {
+            if (editingIndex !== null) {
+                await updateMember(member);
+            } else {
+                await createMember(member);
+            }
 
-        if (editingIndex !== null) {
-            updateMember(member);
-        } else {
-            createMember(member);
+            setOpen(false);
+            setEditingIndex(null);
+        } catch (error) {
+            const message =
+                error instanceof Error
+                    ? error.message
+                    : "Unable to save member. Please try again.";
+
+            console.error("Save member error:", error);
+            setSaveError(message);
+            throw error;
         }
-
-
-        setOpen(false);
-
-
-        setEditingIndex(null);
-
     };
 
 
@@ -250,6 +259,8 @@ function Member() {
 
                         setEditingIndex(null);
 
+                        setSaveError("");
+
                         setOpen(true);
 
                     }}
@@ -336,11 +347,13 @@ function Member() {
                 isOpen={open}
 
 
-                onClose={() => {
+                    onClose={() => {
 
-                    setOpen(false);
+                        setOpen(false);
 
-                    setEditingIndex(null);
+                        setEditingIndex(null);
+
+                        setSaveError("");
 
                 }}
 
@@ -371,6 +384,8 @@ function Member() {
 
                         setEditingIndex(null);
 
+                        setSaveError("");
+
                     }}
 
 
@@ -383,6 +398,8 @@ function Member() {
                             : undefined
 
                     }
+
+                    error={saveError}
 
 
                 />

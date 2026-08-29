@@ -11,6 +11,7 @@ import {
   deleteMember,
   searchMembers,
 } from "@/api/member";
+import type { Member } from "@/api/member";
 import { useState, useEffect } from "react";
 
 
@@ -27,7 +28,12 @@ export function useMembers() {
   const createMutation = useMutation({
     mutationFn: createMember,
 
-    onSuccess: () => {
+    onSuccess: (newMember) => {
+      queryClient.setQueryData<Member[]>(["members"], (currentMembers) => [
+        ...(currentMembers ?? []),
+        newMember,
+      ]);
+
       queryClient.invalidateQueries({
         queryKey: ["members"],
       });
@@ -73,9 +79,9 @@ export function useMembers() {
 
     isLoading: membersQuery.isLoading,
 
-    createMember: createMutation.mutate,
+    createMember: createMutation.mutateAsync,
 
-    updateMember: updateMutation.mutate,
+    updateMember: updateMutation.mutateAsync,
 
     deleteMember: deleteMutation.mutate,
   };

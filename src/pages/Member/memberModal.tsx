@@ -4,8 +4,9 @@ import DatePicker from "@/component/DatePicker/datepicker";
 
 type MemberFormProps = {
   initialData?: Member;
-  onSubmit: (member: Member) => void;
+  onSubmit: (member: Member) => void | Promise<void>;
   onCancel: () => void;
+  error?: string;
 };
 
 const emptyForm: Member = {
@@ -20,8 +21,10 @@ export default function MemberForm({
   initialData,
   onSubmit,
   onCancel,
+  error,
 }: MemberFormProps) {
   const [form, setForm] = useState<Member>(emptyForm);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (initialData) {
@@ -40,12 +43,19 @@ export default function MemberForm({
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    onSubmit(form);
+    setIsSubmitting(true);
 
-    setForm(emptyForm);
+    try {
+      await onSubmit(form);
+      setForm(emptyForm);
+    } catch {
+      // The parent displays the database error while preserving the form.
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -125,6 +135,12 @@ export default function MemberForm({
       </div>
 
       {/* Buttons */}
+      {error && (
+        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+          {error}
+        </p>
+      )}
+
       <div className="flex justify-end gap-3 pt-3">
         <button
           type="button"
@@ -136,6 +152,7 @@ export default function MemberForm({
 
         <button
           type="submit"
+          disabled={isSubmitting}
           className="rounded-lg bg-green-600 px-5 py-2 text-white hover:bg-green-700"
         >
           {initialData ? "Update Member" : "Save Member"}
