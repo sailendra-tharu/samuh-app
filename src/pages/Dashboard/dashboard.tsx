@@ -4,15 +4,10 @@ import {
   ArrowUpRight,
   BriefcaseBusiness,
   CalendarDays,
-  CheckCircle2,
   ChevronRight,
   CircleDollarSign,
   Clock3,
-  CreditCard,
   HandCoins,
-  Plus,
-  ReceiptText,
-  UserRoundPlus,
   Users,
   Wallet,
 } from "lucide-react";
@@ -193,6 +188,22 @@ function Dashboard() {
     ])
   ).sort((first, second) => second - first);
   const activityItems = getActivityItems(savings, loans);
+  const topContributors = Array.from(
+    savings.reduce((contributorMap, saving) => {
+      const name = saving.name.trim() || "Unknown member";
+      const current = contributorMap.get(name) ?? { total: 0, records: 0 };
+
+      contributorMap.set(name, {
+        total: current.total + (saving.paymentReceived ?? 0),
+        records: current.records + 1,
+      });
+
+      return contributorMap;
+    }, new Map<string, { total: number; records: number }>())
+  )
+    .map(([name, details]) => ({ name, ...details }))
+    .sort((first, second) => second.total - first.total)
+    .slice(0, 5);
   const todayLabel = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     day: "numeric",
@@ -241,30 +252,6 @@ function Dashboard() {
       icon: CircleDollarSign,
       iconClass: "bg-[#e8f3ff] text-[#3679c9]",
       accent: "#3679c9",
-    },
-  ] as const;
-
-  const quickActions = [
-    {
-      label: "Add a member",
-      description: "Register someone new",
-      icon: UserRoundPlus,
-      path: "/members",
-      className: "bg-[#e9f8f0] text-[#087b55]",
-    },
-    {
-      label: "Record saving",
-      description: "Add a new contribution",
-      icon: ReceiptText,
-      path: "/savings",
-      className: "bg-[#fff5dc] text-[#b47709]",
-    },
-    {
-      label: "Issue a loan",
-      description: "Create a loan record",
-      icon: CreditCard,
-      path: "/loans",
-      className: "bg-[#eeebff] text-[#6651c3]",
     },
   ] as const;
 
@@ -491,45 +478,41 @@ function Dashboard() {
         <article className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)] sm:p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-base font-semibold text-slate-900">Quick actions</p>
-              <p className="mt-1 text-sm text-slate-500">Common tasks, one click away</p>
+              <p className="text-base font-semibold text-slate-900">Top contributors</p>
+              <p className="mt-1 text-sm text-slate-500">Members with the highest savings</p>
             </div>
-            <Plus className="h-5 w-5 text-slate-300" />
+            <Users className="h-5 w-5 text-slate-300" />
           </div>
 
-          <div className="mt-6 space-y-3">
-            {quickActions.map((action) => {
-              const Icon = action.icon;
-
-              return (
-                <button
-                  key={action.label}
-                  type="button"
-                  onClick={() => navigate(action.path)}
-                  className="group flex w-full items-center gap-3 rounded-xl border border-slate-100 p-3 text-left transition hover:border-slate-200 hover:bg-slate-50"
-                >
-                  <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${action.className}`}>
-                    <Icon className="h-4 w-4" />
+          <div className="mt-6 divide-y divide-slate-100">
+            {isLoading ? (
+              <div className="py-10 text-center text-sm text-slate-400">Loading contributors…</div>
+            ) : topContributors.length === 0 ? (
+              <div className="py-10 text-center text-sm text-slate-400">No savings recorded yet.</div>
+            ) : (
+              topContributors.map((contributor, index) => (
+                <div key={contributor.name} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                  <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl text-xs font-bold ${index === 0 ? "bg-[#fff4da] text-[#b47709]" : "bg-[#e9f8f0] text-[#087b55]"}`}>
+                    {contributor.name.slice(0, 2).toUpperCase()}
                   </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-semibold text-slate-800">{action.label}</span>
-                    <span className="mt-0.5 block text-xs text-slate-500">{action.description}</span>
-                  </span>
-                  <ChevronRight className="h-4 w-4 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-slate-500" />
-                </button>
-              );
-            })}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-slate-800">{contributor.name}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">{contributor.records} contribution{contributor.records === 1 ? "" : "s"}</p>
+                  </div>
+                  <p className="shrink-0 text-sm font-semibold text-[#087b55]">{formatCompactCurrency(contributor.total)}</p>
+                </div>
+              ))
+            )}
           </div>
 
-          <div className="mt-6 rounded-xl bg-[#f7faf9] p-4">
-            <div className="flex items-start gap-3">
-              <span className="rounded-lg bg-[#dff4e8] p-2 text-[#087b55]"><CheckCircle2 className="h-4 w-4" /></span>
-              <div>
-                <p className="text-sm font-semibold text-slate-800">Stay on top of repayments</p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">Review active loans regularly to keep every member on track.</p>
-              </div>
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={() => navigate("/members")}
+            className="mt-6 flex w-full items-center justify-between border-t border-slate-100 pt-4 text-sm font-semibold text-[#087b55] transition hover:text-[#07583e]"
+          >
+            View all members
+            <ChevronRight className="h-4 w-4" />
+          </button>
         </article>
       </section>
 
