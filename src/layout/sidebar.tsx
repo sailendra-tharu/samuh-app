@@ -4,9 +4,6 @@ import {
   Users,
   Wallet,
   HandCoins,
-  UserPlus,
-  FilePlus,
-  CreditCard,
   LogOut,
   X,
 } from "lucide-react";
@@ -31,24 +28,6 @@ const menuItems = [
   {
     name: "Loans",
     icon: HandCoins,
-    path: "/loans",
-  },
-];
-
-const quickActions = [
-  {
-    name: "Add Member",
-    icon: UserPlus,
-    path: "/members",
-  },
-  {
-    name: "New Savings",
-    icon: FilePlus,
-    path: "/savings",
-  },
-  {
-    name: "Issue Loan",
-    icon: CreditCard,
     path: "/loans",
   },
 ];
@@ -149,28 +128,6 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
             })}
           </div>
 
-          {/* Quick Actions */}
-          <div className="mt-8 border-t border-white/10 pt-6">
-            <p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-100/45">Quick actions</p>
-
-            {quickActions.map((item) => {
-              const Icon = item.icon;
-
-              return (
-                <button
-                  key={item.name}
-                  onClick={() => {
-                    navigate(item.path);
-                    onClose();
-                  }}
-                  className="flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm text-emerald-50/60 transition hover:bg-white/10 hover:text-white"
-                >
-                  <Icon size={17} />
-                  {item.name}
-                </button>
-              );
-            })}
-          </div>
         </nav>
 
         {/* User Section */}
