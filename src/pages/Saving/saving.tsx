@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { PlusIcon, Search } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import NepaliDate from "nepali-date-converter";
 
 import DataTable from "@/component/Table/datatable";
 import DeleteModal from "@/component/Modal/deleteModal";
@@ -10,7 +12,18 @@ import { useSavings, useSearchSavings } from "@/hook/saving";
 import SavingForm from "./savingModal";
 import { userColumns, type Saving } from "./useColumn";
 
+const isCurrentBSMonth = (dateString: string) => {
+  const today = NepaliDate.now();
+  const savingDate = new NepaliDate(new Date(dateString));
+
+  return (
+    savingDate.getYear() === today.getYear() &&
+    savingDate.getMonth() === today.getMonth()
+  );
+};
+
 function Savings() {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -31,7 +44,10 @@ function Savings() {
     isLoading: isSearching,
   } = useSearchSavings(search);
 
-  const displaySavings = search.trim() ? searchedSavings : savings;
+  const savingsForCurrentMonth = search.trim() ? searchedSavings : savings;
+  const displaySavings = savingsForCurrentMonth.filter((saving) =>
+    isCurrentBSMonth(saving.date)
+  );
 
   const saveSaving = async (saving: Saving) => {
     setSaveError("");
@@ -120,6 +136,11 @@ function Savings() {
         data={displaySavings}
         isLoading={search.trim() ? isSearching : isLoading}
         loader={<Loader />}
+        onRowClick={(saving) => {
+          if (saving.memberId !== null) {
+            navigate(`/savings/${saving.memberId}`);
+          }
+        }}
       />
 
       <Modal

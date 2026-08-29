@@ -3,6 +3,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import NepaliDate from "nepali-date-converter";
 
 export type Member = {
+  id?: number;
   name: string;
   email: string;
   phone: string;
@@ -69,14 +70,22 @@ export const userColumns = (
     cell: ({ row }) => (
       <div className="flex items-center gap-3">
         <button
-          onClick={() => onEdit(row.index)}
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onEdit(row.index);
+          }}
           className="text-blue-600 hover:text-blue-800"
         >
           <Pencil size={18} />
         </button>
 
         <button
-          onClick={() => onDelete(row.index)}
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onDelete(row.index);
+          }}
           className="text-red-600 hover:text-red-800"
         >
           <Trash2 size={18} />

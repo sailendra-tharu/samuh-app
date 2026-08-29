@@ -2,6 +2,7 @@ import { supabase } from "@/lib/supabase";
 
 export interface Saving {
   id?: number;
+  memberId: number | null;
   name: string;
   date: string;
   description: string;
@@ -13,6 +14,7 @@ export interface Saving {
 
 const toSaving = (saving: {
   id: number;
+  member_id: number | null;
   name: string;
   date: string;
   description: string | null;
@@ -22,6 +24,7 @@ const toSaving = (saving: {
   created_at: string | null;
 }): Saving => ({
   id: saving.id,
+  memberId: saving.member_id,
   name: saving.name,
   date: saving.date,
   description: saving.description ?? "",
@@ -46,10 +49,85 @@ export async function getSavings() {
   return data.map(toSaving);
 }
 
+export async function getSavingsByMemberId(
+  memberId: number,
+  memberName?: string
+) {
+  const memberSavingsQuery = supabase
+    .from("saving")
+    .select("*")
+    .eq("member_id", memberId);
+
+  const legacySavingsQuery = memberName
+    ? supabase
+        .from("saving")
+        .select("*")
+        .is("member_id", null)
+        .ilike("name", memberName.trim())
+    : null;
+
+  const [memberSavingsResult, legacySavingsResult] = await Promise.all([
+    memberSavingsQuery,
+    legacySavingsQuery,
+  ]);
+
+  if (memberSavingsResult.error) throw memberSavingsResult.error;
+  if (legacySavingsResult?.error) throw legacySavingsResult.error;
+
+  const savingsById = new Map<number, Saving>();
+
+  [...memberSavingsResult.data, ...(legacySavingsResult?.data ?? [])]
+    .map(toSaving)
+    .forEach((saving) => {
+      if (saving.id !== undefined) {
+        savingsById.set(saving.id, saving);
+      }
+    });
+
+  return Array.from(savingsById.values()).sort((a, b) => {
+    const dateOrder = b.date.localeCompare(a.date);
+    return dateOrder || (b.id ?? 0) - (a.id ?? 0);
+  });
+}
+
+async function findMemberIdByName(name: string) {
+  const memberName = name.trim();
+
+  if (!memberName) {
+    throw new Error("Member name is required for this saving.");
+  }
+
+  const { data, error } = await supabase
+    .from("members")
+    .select("id")
+    .ilike("name", memberName)
+    .limit(2);
+
+  if (error) throw error;
+
+  if (data.length === 0) {
+    throw new Error(
+      `No registered member found with the name "${memberName}".`
+    );
+  }
+
+  if (data.length > 1) {
+    throw new Error(
+      `More than one member has the name "${memberName}". Please use a unique name.`
+    );
+  }
+
+  return data[0].id;
+}
+
 export async function createSaving(saving: Saving) {
+  const memberId =
+    saving.memberId ?? (await findMemberIdByName(saving.name));
+
   const { data, error } = await supabase
     .from("saving")
     .insert({
+      member_id: memberId,
       name: saving.name,
       date: saving.date,
       description: saving.description || null,
@@ -70,9 +148,13 @@ export async function updateSaving(saving: Saving) {
     throw new Error("Saving id is required to update a saving.");
   }
 
+  const memberId =
+    saving.memberId ?? (await findMemberIdByName(saving.name));
+
   const { data, error } = await supabase
     .from("saving")
     .update({
+      member_id: memberId,
       name: saving.name,
       date: saving.date,
       description: saving.description || null,

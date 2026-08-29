@@ -171,6 +171,23 @@ export default function BSDatePicker({
     setOpen(false);
   };
 
+  const handleViewChange = (year: number, month: number) => {
+    setViewYear(year);
+    setViewMonth(month);
+
+    if (!selected) return;
+
+    const date = Math.min(selected.date, daysInMonth(year, month));
+    const picked = new NepaliDate(year, month, date);
+
+    setSelected({
+      year,
+      month,
+      date,
+    });
+    onChange?.(picked.format("YYYY-MM-DD"));
+  };
+
   /*
    * Previous month.
    */
@@ -178,10 +195,9 @@ export default function BSDatePicker({
     if (viewMonth === 0) {
       if (viewYear <= MIN_YEAR) return;
 
-      setViewMonth(11);
-      setViewYear((prev:any) => prev - 1);
+      handleViewChange(viewYear - 1, 11);
     } else {
-      setViewMonth((prev:any) => prev - 1);
+      handleViewChange(viewYear, viewMonth - 1);
     }
   };
 
@@ -192,31 +208,19 @@ export default function BSDatePicker({
     if (viewMonth === 11) {
       if (viewYear >= MAX_YEAR) return;
 
-      setViewMonth(0);
-      setViewYear((prev:any) => prev + 1);
+      handleViewChange(viewYear + 1, 0);
     } else {
-      setViewMonth((prev:any) => prev + 1);
+      handleViewChange(viewYear, viewMonth + 1);
     }
   };
 
   const handleYearChange = (year: number) => {
-    setViewYear(year);
     setYearOpen(false);
+    handleViewChange(year, viewMonth);
+  };
 
-    if (!selected) return;
-
-    const date = Math.min(
-      selected.date,
-      daysInMonth(year, selected.month)
-    );
-    const picked = new NepaliDate(year, selected.month, date);
-
-    setSelected({
-      year,
-      month: selected.month,
-      date,
-    });
-    onChange?.(picked.format("YYYY-MM-DD"));
+  const handleMonthChange = (month: number) => {
+    handleViewChange(viewYear, month);
   };
 
   /*
@@ -355,7 +359,7 @@ export default function BSDatePicker({
               <select
                 value={viewMonth}
                 onChange={(e) =>
-                  setViewMonth(Number(e.target.value))
+                  handleMonthChange(Number(e.target.value))
                 }
                 className="h-8 min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-2 text-sm"
               >

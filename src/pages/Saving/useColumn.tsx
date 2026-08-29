@@ -69,7 +69,10 @@ export const userColumns = (
         <button
           type="button"
           className="rounded-md p-2 text-blue-600 hover:bg-blue-100"
-          onClick={() => onEdit(row.index)}
+          onClick={(event) => {
+            event.stopPropagation();
+            onEdit(row.index);
+          }}
           title="Edit"
         >
           <Pencil size={18} />
@@ -78,7 +81,10 @@ export const userColumns = (
         <button
           type="button"
           className="rounded-md p-2 text-red-600 hover:bg-red-100"
-          onClick={() => onDelete(row.index)}
+          onClick={(event) => {
+            event.stopPropagation();
+            onDelete(row.index);
+          }}
           title="Delete"
         >
           <Trash2 size={18} />

@@ -24,6 +24,8 @@ interface DataTableProps<TData> {
 
   loader?: ReactNode;
 
+  onRowClick?: (row: TData) => void;
+
 }
 
 
@@ -37,6 +39,8 @@ function DataTable<TData>({
   isLoading = false,
 
   loader,
+
+  onRowClick,
 
 }: DataTableProps<TData>) {
 
@@ -278,8 +282,11 @@ function DataTable<TData>({
                     className={`
                       transition-colors
                       hover:bg-gray-100
+                      ${onRowClick ? "cursor-pointer" : ""}
                       ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}
                     `}
+
+                    onClick={() => onRowClick?.(row.original)}
 
                   >
 

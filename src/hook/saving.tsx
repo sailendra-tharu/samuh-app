@@ -9,6 +9,7 @@ import {
   createSaving,
   deleteSaving,
   getSavings,
+  getSavingsByMemberId,
   searchSavings,
   updateSaving,
   type Saving,
@@ -76,6 +77,19 @@ export function useSearchSavings(searchQuery: string) {
     queryKey: ["savings", "search", debouncedQuery],
     queryFn: () => searchSavings(debouncedQuery),
     enabled: Boolean(debouncedQuery.trim()),
+  });
+
+  return {
+    savings: savingsQuery.data ?? [],
+    isLoading: savingsQuery.isLoading,
+  };
+}
+
+export function useMemberSavings(memberId?: number, memberName?: string) {
+  const savingsQuery = useQuery({
+    queryKey: ["savings", "member", memberId, memberName],
+    queryFn: () => getSavingsByMemberId(memberId as number, memberName),
+    enabled: memberId !== undefined,
   });
 
   return {

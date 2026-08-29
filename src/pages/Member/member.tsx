@@ -17,8 +17,6 @@ import Loader from "@/component/Loader/loader";
 
 
 function Member() {
-
-
     const [open, setOpen] = useState(false);
 
     const [openDelete, setOpenDelete] = useState(false);

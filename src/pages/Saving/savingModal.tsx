@@ -3,6 +3,7 @@ import NepaliDate from "nepali-date-converter";
 
 import type { Saving } from "@/api/saving";
 import DatePicker from "@/component/DatePicker/datepicker";
+import { useMembers } from "@/hook/member";
 
 type SavingFormProps = {
   initialData?: Saving;
@@ -45,6 +46,7 @@ const toADDate = (bsDate: string) => {
 };
 
 const createEmptyForm = (): Saving => ({
+  memberId: null,
   name: "",
   date: formatLocalDate(new Date()),
   description: "",
@@ -61,18 +63,49 @@ export default function SavingForm({
 }: SavingFormProps) {
   const [form, setForm] = useState<Saving>(createEmptyForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { members } = useMembers();
 
   useEffect(() => {
     setForm(initialData ?? createEmptyForm());
   }, [initialData]);
 
+  useEffect(() => {
+    if (!initialData || initialData.memberId !== null || members.length === 0) {
+      return;
+    }
+
+    const matchingMember = members.find(
+      (member) =>
+        member.name.trim().toLowerCase() ===
+        initialData.name.trim().toLowerCase()
+    );
+
+    if (matchingMember?.id !== undefined) {
+      setForm((previous) => ({
+        ...previous,
+        memberId: matchingMember.id ?? null,
+      }));
+    }
+  }, [initialData, members]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, type, value } = e.target;
+    const matchingMember =
+      name === "name"
+        ? members.find(
+            (member) =>
+              member.name.trim().toLowerCase() ===
+              value.trim().toLowerCase()
+          )
+        : undefined;
 
     setForm((previous) => ({
       ...previous,
       [name]:
         type === "number" ? (value === "" ? null : Number(value)) : value,
+      ...(name === "name"
+        ? { memberId: matchingMember?.id ?? null }
+        : {}),
     }));
   };
 

@@ -1,19 +1,26 @@
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import { Menu, Bell, ChevronDown } from "lucide-react";
-import Sidebar from "./sidebar";
 import { useLocation } from "react-router-dom";
+import Sidebar from "./sidebar";
 
 
 function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
 
-  const pageTitle = location.pathname
-    .split("/")
-    .filter(Boolean)
-    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-    .join(" ") || "Dashboard";
+  const pathSegments = location.pathname.split("/").filter(Boolean);
+  const section = pathSegments[0];
+  const isDetailsPage = pathSegments.length > 1;
+  const pageTitle = isDetailsPage && section === "savings"
+    ? "Savings Details"
+    : isDetailsPage && section === "members"
+      ? "Member Details"
+      : pathSegments
+          .map((segment) =>
+            segment.charAt(0).toUpperCase() + segment.slice(1)
+          )
+          .join(" ") || "Dashboard";
 
   return (
     <div className="h-screen w-screen flex overflow-hidden bg-gray-100">
