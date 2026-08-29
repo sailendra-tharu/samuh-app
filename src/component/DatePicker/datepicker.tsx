@@ -472,11 +472,6 @@ export default function BSDatePicker({
               );
             })}
           </div>
-
-          {/* Helper */}
-          <p className="mt-3 text-xs text-muted-foreground">
-            Only past B.S. dates can be selected.
-          </p>
         </div>
       )}
     </div>
