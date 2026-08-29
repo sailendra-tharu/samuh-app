@@ -6,6 +6,7 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 
 
 const Loans = lazy(() => import("@/pages/Loans/loans"));
+const LoanDetails = lazy(() => import("@/pages/Loans/loanDetails"));
 const Members = lazy(() => import("@/pages/Member/member"));
 const Savings = lazy(() => import("@/pages/Saving/saving"));
 const SavingDetails = lazy(() => import("@/pages/Saving/savingDetails"));
@@ -55,6 +56,10 @@ export const router = createBrowserRouter([
        {
         path: "loans",
         element: <Loans />,
+      },
+      {
+        path: "loans/:id",
+        element: <LoanDetails />,
       },
     ],
   },

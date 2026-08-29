@@ -37,6 +37,19 @@ const toSaving = (saving: {
   createdAt: saving.created_at ?? undefined,
 });
 
+const validateFineAmounts = (fineIn: number | null, fineOut: number | null) => {
+  const assessedFine = fineIn === null ? 0 : Math.max(0, fineIn);
+  const paidFine = fineOut === null ? 0 : Math.max(0, fineOut);
+
+  if (!Number.isInteger(assessedFine) || !Number.isInteger(paidFine)) {
+    throw new Error("Fine amounts must be whole numbers.");
+  }
+
+  if (paidFine > assessedFine) {
+    throw new Error("Fine Out cannot be greater than Fine In.");
+  }
+};
+
 export async function getSavings() {
   const { data, error } = await supabase
     .from("saving")
@@ -90,8 +103,24 @@ export async function getSavingsByMemberId(
   });
 }
 
-async function findMemberIdByName(name: string) {
-  const memberName = name.trim();
+async function resolveMember(saving: Saving) {
+  if (saving.memberId !== null) {
+    const { data, error } = await supabase
+      .from("members")
+      .select("id, name")
+      .eq("id", saving.memberId)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (!data) {
+      throw new Error("The selected member no longer exists.");
+    }
+
+    return data;
+  }
+
+  const memberName = saving.name.trim();
 
   if (!memberName) {
     throw new Error("Member name is required for this saving.");
@@ -99,7 +128,7 @@ async function findMemberIdByName(name: string) {
 
   const { data, error } = await supabase
     .from("members")
-    .select("id")
+    .select("id, name")
     .ilike("name", memberName)
     .limit(2);
 
@@ -117,18 +146,18 @@ async function findMemberIdByName(name: string) {
     );
   }
 
-  return data[0].id;
+  return data[0];
 }
 
 export async function createSaving(saving: Saving) {
-  const memberId =
-    saving.memberId ?? (await findMemberIdByName(saving.name));
+  const member = await resolveMember(saving);
+  validateFineAmounts(saving.fineIn, saving.fineOut);
 
   const { data, error } = await supabase
     .from("saving")
     .insert({
-      member_id: memberId,
-      name: saving.name,
+      member_id: member.id,
+      name: member.name,
       date: saving.date,
       description: saving.description || null,
       fine_in: saving.fineIn,
@@ -148,14 +177,14 @@ export async function updateSaving(saving: Saving) {
     throw new Error("Saving id is required to update a saving.");
   }
 
-  const memberId =
-    saving.memberId ?? (await findMemberIdByName(saving.name));
+  const member = await resolveMember(saving);
+  validateFineAmounts(saving.fineIn, saving.fineOut);
 
   const { data, error } = await supabase
     .from("saving")
     .update({
-      member_id: memberId,
-      name: saving.name,
+      member_id: member.id,
+      name: member.name,
       date: saving.date,
       description: saving.description || null,
       fine_in: saving.fineIn,

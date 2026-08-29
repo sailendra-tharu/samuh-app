@@ -14,6 +14,8 @@ function Layout() {
   const isDetailsPage = pathSegments.length > 1;
   const pageTitle = isDetailsPage && section === "savings"
     ? "Savings Details"
+    : isDetailsPage && section === "loans"
+      ? "Loan Details"
     : isDetailsPage && section === "members"
       ? "Member Details"
       : pathSegments

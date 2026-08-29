@@ -9,6 +9,9 @@ import { useMemberSavings } from "@/hook/saving";
 
 const formatAmount = (amount: number) => amount.toLocaleString();
 
+const getRemainingFine = (fineIn: number | null, fineOut: number | null) =>
+  Math.max(0, (fineIn ?? 0) - (fineOut ?? 0));
+
 type MonthlySaving = {
   key: string;
   month: string;
@@ -37,7 +40,7 @@ export default function SavingDetails() {
       const existing = grouped.get(key);
 
       if (existing) {
-        existing.fineIn += saving.fineIn ?? 0;
+        existing.fineIn += getRemainingFine(saving.fineIn, saving.fineOut);
         existing.fineOut += saving.fineOut ?? 0;
         existing.paymentReceived += saving.paymentReceived ?? 0;
 
@@ -50,12 +53,12 @@ export default function SavingDetails() {
         return;
       }
 
-      grouped.set(key, {
-        key,
-        month: nepaliDate.format("MMMM YYYY"),
-        description: saving.description,
-        fineIn: saving.fineIn ?? 0,
-        fineOut: saving.fineOut ?? 0,
+        grouped.set(key, {
+          key,
+          month: nepaliDate.format("MMMM YYYY"),
+          description: saving.description,
+          fineIn: getRemainingFine(saving.fineIn, saving.fineOut),
+          fineOut: saving.fineOut ?? 0,
         paymentReceived: saving.paymentReceived ?? 0,
       });
     });

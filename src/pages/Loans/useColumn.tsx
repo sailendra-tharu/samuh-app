@@ -1,146 +1,187 @@
 import { createColumnHelper } from "@tanstack/react-table";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
+import NepaliDate from "nepali-date-converter";
 
-export type Loan = {
-  sn: number;
-  name: string;
-  date: string;
-  description: string;
-  principleAmount: number;
-  fineIn: number;
-  fineOut: number;
-  interest: number;
-  emiLoan: number;
-};
+import {
+  calculateRemainingFine,
+  calculateRemainingRenewalInterest,
+  isLoanTermExpired,
+  type Loan,
+} from "@/api/loan";
 
-// AD to BS conversion utility
-const adToBs = (date: Date): { year: number; month: number; day: number } => {
-  const bsBase = 2000;
-  const adBase = new Date(1943, 3, 14);
-  const baseAd = adBase.getTime();
-  const oneDayMs = 24 * 60 * 60 * 1000;
-
-  const daysDiff = Math.floor((date.getTime() - baseAd) / oneDayMs);
-
-  const bsMonthDays = [31, 32, 31, 32, 31, 30, 29, 30, 31, 30, 31, 30];
-
-  let bsYear = bsBase;
-  let remainingDays = daysDiff;
-
-  while (remainingDays >= 365) {
-    const isLeap = (bsYear + 56) % 4 === 0 ? 1 : 0;
-    const daysInYear = 365 + isLeap;
-    if (remainingDays >= daysInYear) {
-      remainingDays -= daysInYear;
-      bsYear++;
-    } else {
-      break;
-    }
-  }
-
-  let bsMonth = 1;
-  let bsDay = remainingDays + 1;
-
-  for (let i = 0; i < 12; i++) {
-    if (bsDay <= bsMonthDays[i]) {
-      bsMonth = i + 1;
-      break;
-    }
-    bsDay -= bsMonthDays[i];
-  }
-
-  return { year: bsYear, month: bsMonth, day: bsDay };
-};
+export type { Loan } from "@/api/loan";
 
 const formatDateToBS = (dateString: string): string => {
-  const bsMonthNames = [
-    "Baishakh",
-    "Jyaishtha",
-    "Aashadh",
-    "Shrawan",
-    "Bhadra",
-    "Ashwin",
-    "Kartik",
-    "Mangsir",
-    "Poush",
-    "Magh",
-    "Falgun",
-    "Chaitra",
-  ];
-
   if (!dateString) return "";
 
-  const date = new Date(dateString);
-  const bs = adToBs(date);
-
-  return `${bs.day} ${bsMonthNames[bs.month - 1]} ${bs.year}`;
+  try {
+    return new NepaliDate(new Date(dateString)).format("DD MMMM YYYY");
+  } catch {
+    return dateString;
+  }
 };
+
+const formatAmount = (amount: number | null) =>
+  amount === null ? "—" : amount.toLocaleString();
 
 const helper = createColumnHelper<Loan>();
 
-export const userColumns = [
-  helper.accessor("sn", {
+export const userColumns = (
+  onEdit: (index: number) => void,
+  onDelete: (index: number) => void,
+  onAddPayment: (index: number) => void
+) => [
+  helper.display({
+    id: "sn",
     header: "SN",
-    cell: (info) => info.getValue(),
+    cell: ({ row }) => row.index + 1,
   }),
 
   helper.accessor("name", {
     header: "Name",
-    cell: (info) => info.getValue(),
   }),
 
-  helper.accessor("date", {
-    header: "Date",
-    cell: (info) => formatDateToBS(info.getValue()),
+  helper.accessor("loanDate", {
+    header: "Loan Date",
+    cell: ({ getValue }) => formatDateToBS(getValue()),
+  }),
+
+  helper.accessor("loanTermYears", {
+    header: "Term",
+    cell: ({ getValue }) => {
+      const years = getValue();
+      return years === null
+        ? "—"
+        : `${years} ${years === 1 ? "year" : "years"}`;
+    },
+  }),
+
+  helper.accessor("status", {
+    header: "Status",
+    cell: ({ getValue }) => {
+      const status = getValue();
+      const label = status.charAt(0).toUpperCase() + status.slice(1);
+
+      return (
+        <span
+          className={
+            status === "active"
+              ? "font-medium text-amber-600"
+              : status === "paid"
+                ? "font-medium text-green-600"
+                : "font-medium text-blue-600"
+          }
+        >
+          {label}
+        </span>
+      );
+    },
+  }),
+
+  helper.display({
+    id: "renewal",
+    header: "Renewal",
+    cell: ({ row }) => {
+      const loan = row.original;
+      const renewalIsDue =
+        loan.status === "active" &&
+        loan.remainingPrincipal !== null &&
+        loan.remainingPrincipal > 0 &&
+        isLoanTermExpired(loan.loanDate, loan.loanTermYears);
+
+      return renewalIsDue
+        ? calculateRemainingRenewalInterest(
+            loan.remainingPrincipal,
+            loan.renewalPaid
+          ).toLocaleString()
+        : "0";
+    },
+  }),
+
+  helper.accessor("renewalPaid", {
+    header: "Renewal Paid",
+    cell: ({ getValue }) => getValue().toLocaleString(),
   }),
 
   helper.accessor("description", {
     header: "Description",
-    cell: (info) => info.getValue(),
+    cell: ({ getValue }) => getValue() || "—",
   }),
 
-  helper.accessor("principleAmount", {
-    header: "Principle Amount",
-    cell: (info) => info.getValue(),
+  helper.accessor("principalAmount", {
+    header: "Principal Amount",
+    cell: ({ getValue }) => formatAmount(getValue()),
   }),
 
   helper.accessor("fineIn", {
     header: "Fine In",
-    cell: (info) => info.getValue(),
+    cell: ({ row }) =>
+      calculateRemainingFine(row.original.fineIn, row.original.fineOut).toLocaleString(),
   }),
 
   helper.accessor("fineOut", {
     header: "Fine Out",
-    cell: (info) => info.getValue(),
+    cell: ({ getValue }) => (getValue() ?? 0).toLocaleString(),
   }),
 
   helper.accessor("interest", {
     header: "Interest",
-    cell: (info) => info.getValue(),
+    cell: ({ getValue }) => formatAmount(getValue()),
   }),
 
-  helper.accessor("emiLoan", {
-    header: "EMI Loan",
-    cell: (info) => info.getValue(),
+  helper.accessor("emi", {
+    header: "Monthly EMI",
+    cell: ({ getValue }) => formatAmount(getValue()),
+  }),
+
+  helper.accessor("paidAmount", {
+    header: "Paid Principal",
+    cell: ({ getValue }) => formatAmount(getValue()),
+  }),
+
+  helper.accessor("remainingPrincipal", {
+    id: "remainingPrincipal",
+    header: "Remaining Principal",
+    cell: ({ getValue }) => formatAmount(getValue()),
   }),
 
   helper.display({
     id: "action",
     header: "Action",
-     size: 1,
+    size: 1,
     cell: ({ row }) => (
       <div className="flex items-center gap-2">
         <button
-          onClick={() => console.log("Edit", row.original)}
-          className="p-2 rounded-md hover:bg-blue-100 text-blue-600"
+          type="button"
+          className="rounded-md p-2 text-green-600 hover:bg-green-100"
+          onClick={(event) => {
+            event.stopPropagation();
+            onAddPayment(row.index);
+          }}
+          title="Add Payment"
+        >
+          <Plus size={18} />
+        </button>
+
+        <button
+          type="button"
+          className="rounded-md p-2 text-blue-600 hover:bg-blue-100"
+          onClick={(event) => {
+            event.stopPropagation();
+            onEdit(row.index);
+          }}
           title="Edit"
         >
           <Pencil size={18} />
         </button>
 
         <button
-          onClick={() => console.log("Delete", row.original)}
-          className="p-2 rounded-md hover:bg-red-100 text-red-600"
+          type="button"
+          className="rounded-md p-2 text-red-600 hover:bg-red-100"
+          onClick={(event) => {
+            event.stopPropagation();
+            onDelete(row.index);
+          }}
           title="Delete"
         >
           <Trash2 size={18} />

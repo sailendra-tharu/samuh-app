@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import NepaliDate from "nepali-date-converter";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -63,6 +64,8 @@ export default function BSDatePicker({
   className,
 }: BSDatePickerProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const calendarRef = useRef<HTMLDivElement>(null);
 
   const todayBS = useMemo(() => NepaliDate.now(), []);
 
@@ -87,6 +90,10 @@ export default function BSDatePicker({
 
   const [open, setOpen] = useState(false);
   const [yearOpen, setYearOpen] = useState(false);
+  const [calendarPosition, setCalendarPosition] = useState({
+    top: 0,
+    left: 0,
+  });
 
   useEffect(() => {
     if (!valueAsDate) {
@@ -138,7 +145,8 @@ export default function BSDatePicker({
     const handleClickOutside = (event: MouseEvent) => {
       if (
         wrapperRef.current &&
-        !wrapperRef.current.contains(event.target as Node)
+        !wrapperRef.current.contains(event.target as Node) &&
+        !calendarRef.current?.contains(event.target as Node)
       ) {
         setOpen(false);
         setYearOpen(false);
@@ -151,6 +159,53 @@ export default function BSDatePicker({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  const updateCalendarPosition = () => {
+    const input = inputRef.current;
+
+    if (!input) return;
+
+    const rect = input.getBoundingClientRect();
+    const popupWidth = 320;
+    const popupHeight = calendarRef.current?.getBoundingClientRect().height ?? 300;
+    const gap = 4;
+    const viewportPadding = 8;
+    const modalHeader = input.closest("[data-modal-header]");
+    const headerBottom = modalHeader
+      ? modalHeader.getBoundingClientRect().bottom + gap
+      : viewportPadding;
+    const top = Math.max(headerBottom, rect.top - popupHeight - gap);
+    const left = Math.min(
+      Math.max(viewportPadding, rect.left),
+      window.innerWidth - popupWidth - viewportPadding
+    );
+
+    setCalendarPosition({ top, left });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+
+    updateCalendarPosition();
+
+    const handleViewportChange = () => updateCalendarPosition();
+
+    window.addEventListener("resize", handleViewportChange);
+    window.addEventListener("scroll", handleViewportChange, true);
+
+    return () => {
+      window.removeEventListener("resize", handleViewportChange);
+      window.removeEventListener("scroll", handleViewportChange, true);
+    };
+  }, [open]);
+
+  const toggleCalendar = () => {
+    if (disabled) return;
+
+    if (!open) updateCalendarPosition();
+    setOpen((previous) => !previous);
+    setYearOpen(false);
+  };
 
   /*
    * Select date.
@@ -293,16 +348,14 @@ export default function BSDatePicker({
       {/* Input */}
       <div className="relative">
         <input
+          ref={inputRef}
           type="text"
           readOnly
           value={displayValue}
           placeholder={placeholder}
           disabled={disabled}
           onClick={() => {
-            if (!disabled) {
-              setOpen((prev) => !prev);
-              setYearOpen(false);
-            }
+            toggleCalendar();
           }}
           className={cn(
             "h-10 w-full cursor-pointer rounded-lg border border-gray-300 bg-white px-3 py-2 pr-10 text-sm outline-none",
@@ -319,10 +372,7 @@ export default function BSDatePicker({
           type="button"
           disabled={disabled}
           onClick={() => {
-            if (!disabled) {
-              setOpen((prev) => !prev);
-              setYearOpen(false);
-            }
+            toggleCalendar();
           }}
           className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center text-muted-foreground"
         >
@@ -338,8 +388,14 @@ export default function BSDatePicker({
       )}
 
       {/* Calendar */}
-      {open && !disabled && (
-        <div className="absolute bottom-full left-0 z-[1055] mb-1 h-[300px] w-[320px] rounded-lg border border-gray-300 bg-white p-3 shadow-lg">
+      {open &&
+        !disabled &&
+        createPortal(
+          <div
+            ref={calendarRef}
+            style={calendarPosition}
+            className="fixed z-[1100] w-[320px] rounded-lg border border-gray-300 bg-white p-3 shadow-lg"
+          >
           {/* Header */}
           <div className="mb-2 flex items-center justify-between gap-2">
             <button
@@ -476,8 +532,9 @@ export default function BSDatePicker({
               );
             })}
           </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

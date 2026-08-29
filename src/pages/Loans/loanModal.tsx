@@ -1,13 +1,18 @@
 import { useEffect, useState } from "react";
 import NepaliDate from "nepali-date-converter";
 
-import type { Saving } from "@/api/saving";
+import {
+  calculateLoanEmi,
+  calculateLoanInterest,
+  calculateRemainingPrincipal,
+  type Loan,
+} from "@/api/loan";
 import DatePicker from "@/component/DatePicker/datepicker";
 import { useMembers } from "@/hook/member";
 
-type SavingFormProps = {
-  initialData?: Saving;
-  onSubmit: (saving: Saving) => void | Promise<void>;
+type LoanFormProps = {
+  initialData?: Loan;
+  onSubmit: (loan: Loan) => void | Promise<void>;
   onCancel: () => void;
   error?: string;
 };
@@ -45,72 +50,104 @@ const toADDate = (bsDate: string) => {
   }
 };
 
-const createEmptyForm = (): Saving => ({
+const createEmptyForm = (): Loan => ({
   memberId: null,
+  status: "active",
+  renewedFromLoanId: null,
   name: "",
-  date: formatLocalDate(new Date()),
+  loanDate: formatLocalDate(new Date()),
+  loanTermYears: null,
   description: "",
+  principalAmount: null,
   fineIn: null,
   fineOut: 0,
-  paymentReceived: null,
+  interest: null,
+  emi: null,
+  renewalPaid: 0,
+  paidAmount: 0,
+  remainingPrincipal: null,
+  payments: [],
 });
 
-export default function SavingForm({
+export default function LoanForm({
   initialData,
   onSubmit,
   onCancel,
   error,
-}: SavingFormProps) {
-  const [form, setForm] = useState<Saving>(createEmptyForm);
+}: LoanFormProps) {
+  const [form, setForm] = useState<Loan>(createEmptyForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { members } = useMembers();
 
   useEffect(() => {
-    setForm(initialData ?? createEmptyForm());
+    const loan = initialData ?? createEmptyForm();
+
+    setForm({
+      ...loan,
+      remainingPrincipal: calculateRemainingPrincipal(
+        loan.principalAmount,
+        loan.paidAmount
+      ),
+      interest: calculateLoanInterest(
+        calculateRemainingPrincipal(loan.principalAmount, loan.paidAmount)
+      ),
+      emi:
+        calculateLoanEmi(loan.principalAmount, loan.loanTermYears) ??
+        loan.emi,
+    });
   }, [initialData]);
 
-  useEffect(() => {
-    if (!initialData || initialData.memberId !== null || members.length === 0) {
-      return;
-    }
-
-    const matchingMember = members.find(
-      (member) =>
-        member.name.trim().toLowerCase() ===
-        initialData.name.trim().toLowerCase()
-    );
-
-    if (matchingMember?.id !== undefined) {
-      setForm((previous) => ({
-        ...previous,
-        memberId: matchingMember.id ?? null,
-      }));
-    }
-  }, [initialData, members]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, type, value } = e.target;
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, type, value } = event.target;
     const matchingMember =
       name === "name"
         ? members.find(
             (member) =>
-              member.name.trim().toLowerCase() ===
-              value.trim().toLowerCase()
+              member.name.trim().toLowerCase() === value.trim().toLowerCase()
           )
         : undefined;
 
-    setForm((previous) => ({
-      ...previous,
-      [name]:
-        type === "number" ? (value === "" ? null : Number(value)) : value,
-      ...(name === "name"
-        ? { memberId: matchingMember?.id ?? null }
-        : {}),
-    }));
+    const nextValue =
+      type === "number" ? (value === "" ? null : Number(value)) : value;
+
+    setForm((previous) => {
+      const nextForm = {
+        ...previous,
+        [name]: nextValue,
+        ...(name === "name"
+          ? { memberId: matchingMember?.id ?? null }
+          : {}),
+      } as Loan;
+
+      if (name === "principalAmount") {
+        nextForm.remainingPrincipal = calculateRemainingPrincipal(
+          nextValue as number | null,
+          previous.paidAmount
+        );
+        nextForm.interest = calculateLoanInterest(
+          nextForm.remainingPrincipal
+        );
+      }
+
+      if (name === "principalAmount" || name === "loanTermYears") {
+        const principalAmount =
+          name === "principalAmount"
+            ? (nextValue as number | null)
+            : previous.principalAmount;
+        const loanTermYears =
+          name === "loanTermYears"
+            ? (nextValue as number | null)
+            : previous.loanTermYears;
+
+        nextForm.emi = calculateLoanEmi(principalAmount, loanTermYears);
+      }
+
+      return nextForm;
+    });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setIsSubmitting(true);
 
     try {
@@ -134,11 +171,11 @@ export default function SavingForm({
           value={form.name}
           onChange={handleChange}
           placeholder="Enter member name"
-          list="registered-member-names"
+          list="registered-loan-member-names"
           className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
           required
         />
-        <datalist id="registered-member-names">
+        <datalist id="registered-loan-member-names">
           {members.map((member) => (
             <option key={member.id} value={member.name} />
           ))}
@@ -158,7 +195,21 @@ export default function SavingForm({
         />
       </div>
 
-      <div className="grid gap-5 sm:grid-cols-3">
+      <div className="grid gap-5 sm:grid-cols-2">
+        <NumberField
+          label="Principal Amount"
+          name="principalAmount"
+          value={form.principalAmount}
+          onChange={handleChange}
+          required
+        />
+        <NumberField
+          label="Loan Term (Years)"
+          name="loanTermYears"
+          value={form.loanTermYears}
+          onChange={handleChange}
+          required
+        />
         <NumberField
           label="Fine In"
           name="fineIn"
@@ -166,33 +217,48 @@ export default function SavingForm({
           onChange={handleChange}
         />
         <NumberField
-          label="Fine Out"
+          label="Fine Out (Auto)"
           name="fineOut"
           value={form.fineOut}
           onChange={handleChange}
+          readOnly
         />
         <NumberField
-          label="Payment Received"
-          name="paymentReceived"
-          value={form.paymentReceived}
+          label="Interest (Auto)"
+          name="interest"
+          value={form.interest}
           onChange={handleChange}
+          readOnly
+        />
+        <NumberField
+          label="Monthly EMI (Auto)"
+          name="emi"
+          value={form.emi}
+          onChange={handleChange}
+          readOnly
+          required
         />
       </div>
 
-       <div>
+      <div className="rounded-lg bg-green-50 px-4 py-3 text-sm text-gray-700">
+        Monthly EMI is the planned amount. Use the green plus button in the
+        table to record each payment; paying more than the EMI is allowed.
+      </div>
+
+      <div>
         <label className="mb-1 block text-sm font-medium text-gray-700">
-          Date (B.S.)
+          Loan Date (B.S.)
         </label>
         <DatePicker
-          value={toBSDate(form.date)}
+          value={toBSDate(form.loanDate)}
           onChange={(bsDate) =>
             setForm((previous) => ({
               ...previous,
-              date: toADDate(bsDate),
+              loanDate: toADDate(bsDate),
             }))
           }
           label=""
-          placeholder="Select date"
+          placeholder="Select loan date"
         />
       </div>
 
@@ -216,11 +282,7 @@ export default function SavingForm({
           disabled={isSubmitting}
           className="rounded-lg bg-green-600 px-5 py-2 text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isSubmitting
-            ? "Saving..."
-            : initialData
-              ? "Update Saving"
-              : "Save Saving"}
+          {isSubmitting ? "Saving..." : initialData ? "Update Loan" : "Save Loan"}
         </button>
       </div>
     </form>
@@ -231,10 +293,19 @@ type NumberFieldProps = {
   label: string;
   name: string;
   value: number | null;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  readOnly?: boolean;
+  required?: boolean;
 };
 
-function NumberField({ label, name, value, onChange }: NumberFieldProps) {
+function NumberField({
+  label,
+  name,
+  value,
+  onChange,
+  readOnly = false,
+  required = false,
+}: NumberFieldProps) {
   return (
     <div>
       <label className="mb-1 block text-sm font-medium text-gray-700">
@@ -245,9 +316,11 @@ function NumberField({ label, name, value, onChange }: NumberFieldProps) {
         name={name}
         value={value ?? ""}
         onChange={onChange}
+        readOnly={readOnly}
+        required={required}
         min="0"
         step="1"
-        className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+        className={`w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${readOnly ? "cursor-not-allowed bg-gray-100" : ""}`}
       />
     </div>
   );

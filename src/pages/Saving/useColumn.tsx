@@ -19,6 +19,9 @@ const formatDateToBS = (dateString: string): string => {
 const formatAmount = (amount: number | null) =>
   amount === null ? "—" : amount.toLocaleString();
 
+const getRemainingFine = (fineIn: number | null, fineOut: number | null) =>
+  Math.max(0, (fineIn ?? 0) - (fineOut ?? 0));
+
 const helper = createColumnHelper<Saving>();
 
 export const userColumns = (
@@ -47,12 +50,13 @@ export const userColumns = (
 
   helper.accessor("fineIn", {
     header: "Fine In",
-    cell: ({ getValue }) => formatAmount(getValue()),
+    cell: ({ row }) =>
+      getRemainingFine(row.original.fineIn, row.original.fineOut).toLocaleString(),
   }),
 
   helper.accessor("fineOut", {
     header: "Fine Out",
-    cell: ({ getValue }) => formatAmount(getValue()),
+    cell: ({ getValue }) => (getValue() ?? 0).toLocaleString(),
   }),
 
   helper.accessor("paymentReceived", {

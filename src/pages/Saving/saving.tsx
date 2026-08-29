@@ -12,15 +12,8 @@ import { useSavings, useSearchSavings } from "@/hook/saving";
 import SavingForm from "./savingModal";
 import { userColumns, type Saving } from "./useColumn";
 
-const isCurrentBSMonth = (dateString: string) => {
-  const today = NepaliDate.now();
-  const savingDate = new NepaliDate(new Date(dateString));
-
-  return (
-    savingDate.getYear() === today.getYear() &&
-    savingDate.getMonth() === today.getMonth()
-  );
-};
+const getBSMonthKey = (dateString: string) =>
+  new NepaliDate(new Date(dateString)).format("YYYY-MM");
 
 function Savings() {
   const navigate = useNavigate();
@@ -45,9 +38,27 @@ function Savings() {
   } = useSearchSavings(search);
 
   const savingsForCurrentMonth = search.trim() ? searchedSavings : savings;
-  const displaySavings = savingsForCurrentMonth.filter((saving) =>
-    isCurrentBSMonth(saving.date)
+  const currentMonthKey = NepaliDate.now().format("YYYY-MM");
+  const currentMonthSavings = savingsForCurrentMonth.filter(
+    (saving) => getBSMonthKey(saving.date) === currentMonthKey
   );
+  const latestMonthKey = savingsForCurrentMonth.reduce<string | null>(
+    (latest, saving) => {
+      const savingMonthKey = getBSMonthKey(saving.date);
+
+      return latest === null || savingMonthKey > latest
+        ? savingMonthKey
+        : latest;
+    },
+    null
+  );
+  const displayMonthKey =
+    currentMonthSavings.length > 0 ? currentMonthKey : latestMonthKey;
+  const displaySavings = displayMonthKey
+    ? savingsForCurrentMonth.filter(
+        (saving) => getBSMonthKey(saving.date) === displayMonthKey
+      )
+    : [];
 
   const saveSaving = async (saving: Saving) => {
     setSaveError("");

@@ -46,7 +46,10 @@ export default function Modal({
         className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-200"
       >
         {/* Header */}
-        <div className="relative z-[1060] flex items-center justify-between border-b bg-gray-50 px-6 py-4 bg-green-700 text-white">
+        <div
+          data-modal-header
+          className="relative z-[1060] flex items-center justify-between border-b bg-gray-50 px-6 py-4 bg-green-700 text-white"
+        >
           <h2 className="text-xl font-semibold text-gray-800 text-white">
             {title}
           </h2>
