@@ -10,7 +10,7 @@ export type Loan = {
   fineIn: number;
   fineOut: number;
   interest: number;
-  imeLoan: number;
+  emiLoan: number;
 };
 
 // AD to BS conversion utility
@@ -119,8 +119,8 @@ export const userColumns = [
     cell: (info) => info.getValue(),
   }),
 
-  helper.accessor("imeLoan", {
-    header: "IME Loan",
+  helper.accessor("emiLoan", {
+    header: "EMI Loan",
     cell: (info) => info.getValue(),
   }),
 

@@ -162,8 +162,9 @@ function DataTable<TData>({
                         key={header.id}
 
                         className="
-                          border
-                          border-gray-300
+                          border-b
+                          border-r
+                          border-gray-100
                           px-6
                           py-3
                           text-left
@@ -267,17 +268,18 @@ function DataTable<TData>({
               ) : (
 
 
-                table.getRowModel().rows.map((row) => (
+                table.getRowModel().rows.map((row, index) => (
 
 
                   <tr
 
                     key={row.id}
 
-                    className="
+                    className={`
                       transition-colors
-                      hover:bg-gray-50
-                    "
+                      hover:bg-gray-100
+                      ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                    `}
 
                   >
 
@@ -292,8 +294,9 @@ function DataTable<TData>({
                           key={cell.id}
 
                           className="
-                            border
-                            border-gray-300
+                            border-b
+                            border-r
+                            border-gray-100
                             px-6
                             py-4
                             text-sm
@@ -391,33 +394,12 @@ function DataTable<TData>({
 
       {/* Pagination */}
 
-      <div
-
-        className="
-          mt-4
-          flex
-          items-center
-          justify-between
-        "
-
-      >
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
 
 
-        <div className="text-sm text-gray-600">
-
-
-          Page{" "}
-
-          {table.getState().pagination.pageIndex + 1}
-
-
-          {" "}of{" "}
-
-
-          {table.getPageCount() || 1}
-
-
+        <div className="text-sm text-slate-600">
+          Showing {data.length === 0 ? 0 : table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} to {Math.min((table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize, data.length)} of {data.length.toLocaleString()} members
         </div>
 
 
@@ -432,23 +414,11 @@ function DataTable<TData>({
 
 
           <button
-
-            className="
-              rounded-md
-              border
-              px-3
-              py-1
-              disabled:opacity-50
-            "
-
+            className="rounded-md border border-slate-300 bg-white px-3 py-1 text-sm text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => table.previousPage()}
-
             disabled={!table.getCanPreviousPage()}
-
           >
-
             Previous
-
           </button>
 
 
@@ -479,19 +449,7 @@ function DataTable<TData>({
                 }
 
 
-                className={`
-                  rounded-md
-                  border
-                  px-3
-                  py-1
-
-                  ${
-                    table.getState().pagination.pageIndex === pageIndex
-                    ? "bg-[#006b45] text-white"
-                    : "bg-white"
-                  }
-
-                `}
+                className={`rounded-md border px-3 py-1 text-sm transition ${table.getState().pagination.pageIndex === pageIndex ? "bg-[#006b45] text-white border-[#006b45]" : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"}`}
 
               >
 
@@ -512,24 +470,11 @@ function DataTable<TData>({
 
 
           <button
-
-            className="
-              rounded-md
-              border
-              px-3
-              py-1
-              disabled:opacity-50
-            "
-
+            className="rounded-md border border-slate-300 bg-white px-3 py-1 text-sm text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => table.nextPage()}
-
             disabled={!table.getCanNextPage()}
-
           >
-
             Next
-
-
           </button>
 
 

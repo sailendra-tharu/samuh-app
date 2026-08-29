@@ -95,14 +95,18 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
         {/* Logo */}
         <div className="h-20 flex items-center justify-between px-6 border-b border-white/20">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
-              👥
+            <div className="w-12 h-12 rounded-full overflow-hidden bg-white/20 flex items-center justify-center">
+              <img
+                src="/logo.png"
+                alt="Logo"
+                className="w-full h-full object-cover"
+              />
             </div>
 
             <div>
               <h1 className="font-bold text-lg">HAMRO SAMUH</h1>
               <p className="text-xs text-green-100">
-                Savings & Loan Group
+                Together we grow
               </p>
             </div>
           </div>
@@ -129,7 +133,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                     navigate(item.path);
                     onClose();
                   }}
-                  className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg text-sm transition ${location.pathname === item.path
+                  className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg text-sm transition cursor-pointer ${location.pathname === item.path
                     ? "bg-emerald-500"
                     : "hover:bg-white/10"
                     }`}
@@ -166,7 +170,13 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
         {/* User Section */}
         <div className="p-4 border-t border-white/20">
           <div className="flex items-center gap-3 bg-white/10 rounded-lg p-3">
-            <div className="w-10 h-10 rounded-full bg-gray-300"></div>
+            <div className="w-12 h-12 rounded-full overflow-hidden bg-white/20 flex items-center justify-center">
+              <img
+                src="/logo.png"
+                alt="Logo"
+                className="w-full h-full object-cover"
+              />
+            </div>
 
             <div className="flex-1">
               <h3 className="text-sm font-semibold">Admin</h3>

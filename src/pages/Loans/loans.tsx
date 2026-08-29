@@ -1,7 +1,6 @@
 import DataTable from "@/component/Table/datatable";
 import { userColumns, type Loan } from "./useColumn";
 import { PlusIcon, Search } from "lucide-react";
-import Input from "@/component/Input/input";
 
 function Loans() {
     const users: Loan[] = [
@@ -14,7 +13,7 @@ function Loans() {
             fineIn: 100,
             fineOut: 50,
             interest: 500,
-            imeLoan: 0,
+            emiLoan: 0,
         },
     ];
 
