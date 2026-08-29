@@ -3,6 +3,7 @@ import {
   Home,
   Users,
   Wallet,
+  HandCoins,
   UserPlus,
   FilePlus,
   CreditCard,
@@ -29,7 +30,7 @@ const menuItems = [
   },
   {
     name: "Loans",
-    icon: Wallet,
+    icon: HandCoins,
     path: "/loans",
   },
 ];
@@ -38,14 +39,17 @@ const quickActions = [
   {
     name: "Add Member",
     icon: UserPlus,
+    path: "/members",
   },
   {
     name: "New Savings",
     icon: FilePlus,
+    path: "/savings",
   },
   {
     name: "Issue Loan",
     icon: CreditCard,
+    path: "/loans",
   },
 ];
 
@@ -93,9 +97,9 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
   `}
       >
         {/* Logo */}
-        <div className="h-20 flex items-center justify-between px-6 border-b border-white/20">
+        <div className="flex h-20 items-center justify-between border-b border-white/10 px-5">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full overflow-hidden bg-white/20 flex items-center justify-center">
+            <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-white/15 ring-1 ring-white/10">
               <img
                 src="/logo.png"
                 alt="Logo"
@@ -104,26 +108,52 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
             </div>
 
             <div>
-              <h1 className="font-bold text-lg">HAMRO SAMUH</h1>
-              <p className="text-xs text-green-100">
-                Together we grow
-              </p>
+              <h1 className="text-sm font-bold tracking-[0.12em]">HAMRO SAMUH</h1>
+              <p className="mt-0.5 text-[11px] text-emerald-100/60">Together we grow</p>
             </div>
           </div>
 
           {/* Close Button */}
           <button
             onClick={onClose}
-            className="lg:hidden hover:bg-white/10 rounded p-1"
+            className="rounded-lg p-1 text-emerald-100 transition hover:bg-white/10 lg:hidden"
+            aria-label="Close navigation"
           >
             <X size={22} />
           </button>
         </div>
 
         {/* Menu */}
-        <nav className="flex-1 px-4 py-6 overflow-y-auto">
-          <div className="space-y-2">
+        <nav className="flex-1 overflow-y-auto px-3 py-6">
+          <div className="space-y-1.5">
             {menuItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
+
+              return (
+                <button
+                  key={item.name}
+                  onClick={() => {
+                    navigate(item.path);
+                    onClose();
+                  }}
+                  className={`flex w-full cursor-pointer items-center gap-3 rounded-xl px-3.5 py-3 text-sm transition ${isActive
+                    ? "bg-[#2bb673] font-semibold text-white shadow-[0_8px_20px_-12px_rgba(43,182,115,0.9)]"
+                    : "text-emerald-50/75 hover:bg-white/10 hover:text-white"
+                    }`}
+                >
+                  <Icon size={18} strokeWidth={isActive ? 2.4 : 2} />
+                  {item.name}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Quick Actions */}
+          <div className="mt-8 border-t border-white/10 pt-6">
+            <p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-100/45">Quick actions</p>
+
+            {quickActions.map((item) => {
               const Icon = item.icon;
 
               return (
@@ -133,33 +163,9 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                     navigate(item.path);
                     onClose();
                   }}
-                  className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg text-sm transition cursor-pointer ${location.pathname === item.path
-                    ? "bg-emerald-500"
-                    : "hover:bg-white/10"
-                    }`}
+                  className="flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm text-emerald-50/60 transition hover:bg-white/10 hover:text-white"
                 >
-                  <Icon size={20} />
-                  {item.name}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Quick Actions */}
-          <div className="mt-8 border-t border-white/20 pt-6">
-            <p className="text-xs text-green-200 mb-4 px-2">
-              QUICK ACTIONS
-            </p>
-
-            {quickActions.map((item) => {
-              const Icon = item.icon;
-
-              return (
-                <button
-                  key={item.name}
-                  className="w-full flex items-center gap-4 px-4 py-3 rounded-lg hover:bg-white/10 text-sm transition"
-                >
-                  <Icon size={18} />
+                  <Icon size={17} />
                   {item.name}
                 </button>
               );
@@ -168,9 +174,9 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
         </nav>
 
         {/* User Section */}
-        <div className="p-4 border-t border-white/20">
-          <div className="flex items-center gap-3 bg-white/10 rounded-lg p-3">
-            <div className="w-12 h-12 rounded-full overflow-hidden bg-white/20 flex items-center justify-center">
+        <div className="border-t border-white/10 p-3">
+          <div className="flex items-center gap-3 rounded-xl bg-white/10 p-3">
+            <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg bg-white/15">
               <img
                 src="/logo.png"
                 alt="Logo"
@@ -180,13 +186,13 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
 
             <div className="flex-1">
               <h3 className="text-sm font-semibold">Admin</h3>
-              <p className="text-xs text-green-200">Super Admin</p>
+              <p className="text-xs text-emerald-100/55">Super Admin</p>
             </div>
           </div>
 
           <button
             onClick={handleLogout}
-            className="mt-3 w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 text-sm transition"
+            className="mt-2 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-emerald-50/70 transition hover:bg-white/10 hover:text-white"
           >
             <LogOut size={18} />
             Logout

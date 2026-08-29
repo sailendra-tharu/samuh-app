@@ -590,7 +590,9 @@ export async function createLoanPayment(payment: LoanPayment) {
       .eq("id", payment.loanId)
       .maybeSingle();
 
-    loan = fallback.data;
+    loan = fallback.data
+      ? { ...fallback.data, renewal_paid: null }
+      : null;
     loanError = fallback.error;
   }
 
