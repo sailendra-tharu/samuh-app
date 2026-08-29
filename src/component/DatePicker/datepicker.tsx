@@ -335,9 +335,9 @@ export default function BSDatePicker({
 
       {/* Calendar */}
       {open && !disabled && (
-        <div className="absolute bottom-full left-0 z-[1055] mb-1 w-[320px] rounded-lg border border-gray-300 bg-white p-3 shadow-lg">
+        <div className="absolute bottom-full left-0 z-[1055] mb-1 h-[300px] w-[320px] rounded-lg border border-gray-300 bg-white p-3 shadow-lg">
           {/* Header */}
-          <div className="mb-3 flex items-center justify-between gap-2">
+          <div className="mb-2 flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={handlePreviousMonth}
@@ -428,7 +428,7 @@ export default function BSDatePicker({
             {weekdays.map((day) => (
               <div
                 key={day}
-                className="py-1 text-center text-xs font-semibold text-muted-foreground"
+                className="py-0.5 text-center text-xs font-semibold text-muted-foreground"
               >
                 {day}
               </div>
@@ -459,7 +459,7 @@ export default function BSDatePicker({
                     handleSelectDate(day)
                   }
                   className={cn(
-                    "h-9 w-9 rounded-md text-sm transition-colors",
+                    "h-8 w-8 rounded-md text-sm transition-colors",
                     "hover:bg-muted",
                     dateDisabled &&
                       "cursor-not-allowed text-muted-foreground opacity-40",

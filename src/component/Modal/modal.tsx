@@ -6,6 +6,8 @@ type ModalProps = {
   onClose: () => void;
   title?: string;
   children: ReactNode;
+  bodyClassName?: string;
+  bodyScrollable?: boolean;
 };
 
 export default function Modal({
@@ -13,6 +15,8 @@ export default function Modal({
   onClose,
   title,
   children,
+  bodyClassName = "max-h-[70vh]",
+  bodyScrollable = true,
 }: ModalProps) {
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -42,7 +46,7 @@ export default function Modal({
         className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-200"
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b bg-gray-50 px-6 py-4 bg-green-700 text-white">
+        <div className="relative z-[1060] flex items-center justify-between border-b bg-gray-50 px-6 py-4 bg-green-700 text-white">
           <h2 className="text-xl font-semibold text-gray-800 text-white">
             {title}
           </h2>
@@ -56,7 +60,9 @@ export default function Modal({
         </div>
 
         {/* Body */}
-        <div className="max-h-[70vh] overflow-y-auto p-6">
+        <div
+          className={`${bodyScrollable ? "overflow-y-auto" : "overflow-visible"} p-6 ${bodyClassName}`}
+        >
           {children}
         </div>
       </div>
