@@ -48,6 +48,8 @@ const toADDate = (bsDate: string) => {
 const createEmptyForm = (): Saving => ({
   memberId: null,
   name: "",
+  groupName: "",
+  newMember: "",
   date: formatLocalDate(new Date()),
   description: "",
   fineIn: null,
@@ -158,6 +160,23 @@ export default function SavingForm({
         />
       </div>
 
+      <div className="grid gap-5 sm:grid-cols-2">
+        <TextField
+          label="Group Name"
+          name="groupName"
+          value={form.groupName}
+          onChange={handleChange}
+          placeholder="Enter group name"
+        />
+        <TextField
+          label="New Member"
+          name="newMember"
+          value={form.newMember}
+          onChange={handleChange}
+          placeholder="Enter new member"
+        />
+      </div>
+
       <div className="grid gap-5 sm:grid-cols-3">
         <NumberField
           label="Fine In"
@@ -233,6 +252,37 @@ type NumberFieldProps = {
   value: number | null;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 };
+
+type TextFieldProps = {
+  label: string;
+  name: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  placeholder: string;
+};
+
+function TextField({
+  label,
+  name,
+  value,
+  onChange,
+  placeholder,
+}: TextFieldProps) {
+  return (
+    <div>
+      <label className="mb-1 block text-sm font-medium text-gray-700">
+        {label}
+      </label>
+      <input
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+      />
+    </div>
+  );
+}
 
 function NumberField({ label, name, value, onChange }: NumberFieldProps) {
   return (

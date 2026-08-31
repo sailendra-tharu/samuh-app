@@ -4,6 +4,8 @@ export interface Saving {
   id?: number;
   memberId: number | null;
   name: string;
+  groupName: string;
+  newMember: string;
   date: string;
   description: string;
   fineIn: number | null;
@@ -16,6 +18,8 @@ const toSaving = (saving: {
   id: number;
   member_id: number | null;
   name: string;
+  group_name: string | null;
+  new_member: string | null;
   date: string;
   description: string | null;
   fine_in: number | string | null;
@@ -26,6 +30,8 @@ const toSaving = (saving: {
   id: saving.id,
   memberId: saving.member_id,
   name: saving.name,
+  groupName: saving.group_name ?? "",
+  newMember: saving.new_member ?? "",
   date: saving.date,
   description: saving.description ?? "",
   fineIn: saving.fine_in === null ? null : Number(saving.fine_in),
@@ -158,6 +164,8 @@ export async function createSaving(saving: Saving) {
     .insert({
       member_id: member.id,
       name: member.name,
+      group_name: saving.groupName || null,
+      new_member: saving.newMember || null,
       date: saving.date,
       description: saving.description || null,
       fine_in: saving.fineIn,
@@ -185,6 +193,8 @@ export async function updateSaving(saving: Saving) {
     .update({
       member_id: member.id,
       name: member.name,
+      group_name: saving.groupName || null,
+      new_member: saving.newMember || null,
       date: saving.date,
       description: saving.description || null,
       fine_in: saving.fineIn,
@@ -216,7 +226,9 @@ export async function searchSavings(query: string) {
   const { data, error } = await supabase
     .from("saving")
     .select("*")
-    .or(`name.ilike.${searchQuery},description.ilike.${searchQuery}`)
+    .or(
+      `name.ilike.${searchQuery},group_name.ilike.${searchQuery},new_member.ilike.${searchQuery},description.ilike.${searchQuery}`
+    )
     .order("date", { ascending: false })
     .order("id", { ascending: false });
 

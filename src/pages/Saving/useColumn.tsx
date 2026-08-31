@@ -38,6 +38,16 @@ export const userColumns = (
     header: "Name",
   }),
 
+  helper.accessor("groupName", {
+    header: "Group Name",
+    cell: ({ getValue }) => getValue() || "—",
+  }),
+
+  helper.accessor("newMember", {
+    header: "New Member",
+    cell: ({ getValue }) => getValue() || "—",
+  }),
+
   helper.accessor("date", {
     header: "Date",
     cell: ({ getValue }) => formatDateToBS(getValue()),
