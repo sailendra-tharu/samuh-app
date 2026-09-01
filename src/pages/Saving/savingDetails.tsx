@@ -1,16 +1,31 @@
-import { useMemo } from "react";
-import { ArrowLeft } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowLeft, Download } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import NepaliDate from "nepali-date-converter";
 
 import Loader from "@/component/Loader/loader";
 import { useMembers } from "@/hook/member";
 import { useMemberSavings } from "@/hook/saving";
+import { printPdf } from "@/lib/export";
 
 const formatAmount = (amount: number) => amount.toLocaleString();
 
 const getRemainingFine = (fineIn: number | null, fineOut: number | null) =>
   Math.max(0, (fineIn ?? 0) - (fineOut ?? 0));
+
+const getMonthOptions = (year: number) =>
+  Array.from({ length: 12 }, (_, month) => {
+    const date = new NepaliDate(year, month, 1);
+
+    return {
+      value: month,
+      key: date.format("YYYY-MM"),
+      label: date.format("MMMM"),
+    };
+  });
+
+const getYearOptions = (currentYear: number) =>
+  Array.from({ length: 10 }, (_, index) => currentYear - index);
 
 type MonthlySaving = {
   key: string;
@@ -24,6 +39,10 @@ type MonthlySaving = {
 export default function SavingDetails() {
   const { id } = useParams<{ id: string }>();
   const memberId = id && Number.isInteger(Number(id)) ? Number(id) : undefined;
+  const currentBS = NepaliDate.now();
+  const currentYear = currentBS.getYear();
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [selectedMonth, setSelectedMonth] = useState(currentBS.getMonth());
   const { members, isLoading: membersLoading } = useMembers();
   const memberName = members.find((item) => item.id === memberId)?.name;
   const { savings, isLoading: savingsLoading } = useMemberSavings(
@@ -67,6 +86,32 @@ export default function SavingDetails() {
       b.key.localeCompare(a.key)
     );
   }, [savings]);
+  const monthOptions = useMemo(() => getMonthOptions(selectedYear), [selectedYear]);
+  const yearOptions = useMemo(() => getYearOptions(currentYear), [currentYear]);
+  const selectedMonthKey = new NepaliDate(
+    selectedYear,
+    selectedMonth,
+    1
+  ).format("YYYY-MM");
+  const visibleMonthlySavings = useMemo(
+    () => monthlySavings.filter((saving) => saving.key === selectedMonthKey),
+    [monthlySavings, selectedMonthKey]
+  );
+  const exportSavingsDetails = () => {
+    if (visibleMonthlySavings.length === 0) return;
+
+    printPdf(
+      `${memberName ?? savings[0]?.name ?? "Saving"} - Saving Details - ${selectedMonthKey}`,
+      ["Month", "Fine In", "Fine Out", "Payment Received", "Description"],
+      visibleMonthlySavings.map((saving) => [
+        saving.month,
+        saving.fineIn,
+        saving.fineOut,
+        saving.paymentReceived,
+        saving.description,
+      ])
+    );
+  };
 
   if (membersLoading || savingsLoading) {
     return <Loader />;
@@ -83,9 +128,49 @@ export default function SavingDetails() {
       </Link>
 
       <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-xl font-semibold text-gray-900">
-          {memberName ?? savings[0]?.name ?? "Saving"} - Monthly Savings
-        </h2>
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-xl font-semibold text-gray-900">
+            {memberName ?? savings[0]?.name ?? "Saving"} - Monthly Savings
+          </h2>
+
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
+            <div className="flex w-full gap-2 sm:w-auto">
+              <select
+                value={selectedYear}
+                onChange={(event) => setSelectedYear(Number(event.target.value))}
+                className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 sm:w-28 sm:flex-none"
+                aria-label="Saving details year"
+              >
+                {yearOptions.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={selectedMonth}
+                onChange={(event) => setSelectedMonth(Number(event.target.value))}
+                className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 sm:w-36 sm:flex-none"
+                aria-label="Saving details month"
+              >
+                {monthOptions.map((month) => (
+                  <option key={month.key} value={month.value}>
+                    {month.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={exportSavingsDetails}
+              disabled={visibleMonthlySavings.length === 0}
+              className="flex w-full items-center justify-center gap-2 rounded-md border border-green-700 px-4 py-2 text-sm font-medium text-green-700 hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+            >
+              <Download className="h-4 w-4" />
+              Export PDF
+            </button>
+          </div>
+        </div>
 
         <div className="overflow-x-auto">
           <table className="min-w-full border-collapse border border-gray-200">
@@ -101,7 +186,7 @@ export default function SavingDetails() {
               </tr>
             </thead>
             <tbody>
-              {monthlySavings.map((saving) => (
+              {visibleMonthlySavings.map((saving) => (
                 <tr key={saving.key} className="border-b border-gray-100">
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">
                     {saving.month}
@@ -121,7 +206,7 @@ export default function SavingDetails() {
                 </tr>
               ))}
 
-              {monthlySavings.length === 0 && (
+              {visibleMonthlySavings.length === 0 && (
                 <tr>
                   <td
                     colSpan={5}

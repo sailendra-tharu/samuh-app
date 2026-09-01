@@ -4,6 +4,7 @@ import {
   Users,
   Wallet,
   HandCoins,
+  ChartNoAxesCombined,
   LogOut,
   X,
 } from "lucide-react";
@@ -29,6 +30,11 @@ const menuItems = [
     name: "Loans",
     icon: HandCoins,
     path: "/loans",
+  },
+  {
+    name: "Profit & Loss",
+    icon: ChartNoAxesCombined,
+    path: "/profit-loss",
   },
 ];
 
@@ -65,14 +71,14 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
       <aside
         className={`
     fixed top-0 left-0 z-50
-    h-screen
+    h-dvh
     w-[85%] max-w-sm lg:w-64
     bg-[#006b45] text-white
     flex flex-col
     overflow-y-auto
     transform transition-transform duration-300
     ${isOpen ? "translate-x-0" : "-translate-x-full"}
-    lg:translate-x-0 lg:static
+    lg:translate-x-0 lg:sticky lg:top-0
   `}
       >
         {/* Logo */}

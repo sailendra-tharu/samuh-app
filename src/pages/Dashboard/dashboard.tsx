@@ -227,6 +227,7 @@ function Dashboard() {
       detail: "Registered in your group",
       icon: Users,
       iconClass: "bg-[#e7f7ef] text-[#09815a]",
+      valueClass: "text-slate-900",
       accent: "#09815a",
     },
     {
@@ -235,6 +236,7 @@ function Dashboard() {
       detail: `${formatCurrency(savingsThisMonth)} collected this month`,
       icon: Wallet,
       iconClass: "bg-[#fff4da] text-[#bf7b08]",
+      valueClass: "text-[#09815a]",
       accent: "#bf7b08",
     },
     {
@@ -243,6 +245,7 @@ function Dashboard() {
       detail: `${paidLoans.length} loan${paidLoans.length === 1 ? "" : "s"} fully paid`,
       icon: HandCoins,
       iconClass: "bg-[#eeeaff] text-[#6853c8]",
+      valueClass: "text-[#d6a72c]",
       accent: "#6853c8",
     },
     {
@@ -251,12 +254,13 @@ function Dashboard() {
       detail: "Principal remaining to collect",
       icon: CircleDollarSign,
       iconClass: "bg-[#e8f3ff] text-[#3679c9]",
+      valueClass: "text-[#dc2626]",
       accent: "#3679c9",
     },
   ] as const;
 
   return (
-    <div className="mx-auto w-full max-w-[1480px] space-y-6 pb-8">
+    <div className="mx-auto min-w-0 w-full max-w-[1480px] space-y-6 pb-8">
       <section className="relative overflow-hidden rounded-[28px] bg-[#103f34] px-6 py-7 text-white shadow-[0_18px_45px_-24px_rgba(16,63,52,0.8)] sm:px-8 sm:py-8">
         <div className="relative z-10 flex flex-col justify-between gap-7 lg:flex-row lg:items-end">
           <div>
@@ -299,7 +303,7 @@ function Dashboard() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-slate-500">{stat.label}</p>
-                  <p className="mt-3 text-[27px] font-semibold tracking-[-0.04em] text-slate-900">
+                  <p className={`mt-3 text-[27px] font-semibold tracking-[-0.04em] ${stat.valueClass}`}>
                     {isLoading ? "—" : stat.value}
                   </p>
                 </div>

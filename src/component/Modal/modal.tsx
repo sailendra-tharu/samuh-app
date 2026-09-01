@@ -39,11 +39,11 @@ export default function Modal({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm sm:items-center"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+        className="flex max-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-200"
       >
         {/* Header */}
         <div
@@ -64,7 +64,7 @@ export default function Modal({
 
         {/* Body */}
         <div
-          className={`${bodyScrollable ? "overflow-y-auto" : "overflow-visible"} p-6 ${bodyClassName}`}
+          className={`${bodyScrollable ? "min-h-0 flex-1 overflow-y-auto" : "overflow-visible"} p-6 ${bodyClassName}`}
         >
           {children}
         </div>

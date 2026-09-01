@@ -12,6 +12,7 @@ const Savings = lazy(() => import("@/pages/Saving/saving"));
 const SavingDetails = lazy(() => import("@/pages/Saving/savingDetails"));
 const Login = lazy(() => import("@/pages/Auth/login/login"));
 const Dashboard = lazy(() => import("@/pages/Dashboard/dashboard"));
+const ProfitLoss = lazy(() => import("@/pages/ProfitLoss/profitLoss"));
 
 
 export const router = createBrowserRouter([
@@ -60,6 +61,10 @@ export const router = createBrowserRouter([
       {
         path: "loans/:id",
         element: <LoanDetails />,
+      },
+      {
+        path: "profit-loss",
+        element: <ProfitLoss />,
       },
     ],
   },

@@ -14,8 +14,10 @@ function Layout() {
   const pathSegments = location.pathname.split("/").filter(Boolean);
   const section = pathSegments[0];
   const isDetailsPage = pathSegments.length > 1;
-  const pageTitle = isDetailsPage && section === "savings"
-    ? "Savings Details"
+  const pageTitle = section === "profit-loss"
+    ? "Profit & Loss"
+    : isDetailsPage && section === "savings"
+      ? "Savings Details"
     : isDetailsPage && section === "loans"
       ? "Loan Details"
       : isDetailsPage && section === "members"
@@ -33,19 +35,21 @@ function Layout() {
         ? "Track contributions and keep your group’s savings moving forward."
         : section === "loans"
           ? "Manage lending, repayments, and outstanding balances in one place."
+          : section === "profit-loss"
+            ? "Enter and review monthly profit and loss details in one place."
           : "Review the latest details for your group.";
   const adminInitial = user?.email?.charAt(0).toUpperCase() || "A";
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#f5f8f7]">
+    <div className="flex min-h-screen w-full min-w-0 bg-[#f5f8f7]">
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col">
         {/* Mobile Header */}
-        <header className="flex h-16 shrink-0 items-center border-b border-slate-200/80 bg-white px-4 lg:hidden">
+        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center border-b border-slate-200/80 bg-white px-4 lg:hidden">
           <button
             onClick={() => setSidebarOpen(true)}
             className="rounded-lg p-2 text-slate-600 transition hover:bg-slate-100"
@@ -58,7 +62,7 @@ function Layout() {
         </header>
 
         {/* Desktop Header */}
-        <header className="hidden shrink-0 items-center justify-between gap-4 border-b border-slate-200/80 bg-white px-8 py-5 lg:flex">
+        <header className="sticky top-0 z-30 hidden shrink-0 items-center justify-between gap-4 border-b border-slate-200/80 bg-white px-8 py-5 lg:flex">
           <div className="space-y-1">
             <h1 className="text-2xl font-semibold tracking-[-0.03em] text-slate-900">{pageTitle}</h1>
             <p className="text-sm text-slate-500">{pageDescription}</p>
@@ -86,7 +90,7 @@ function Layout() {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-8">
+        <main className="min-w-0 overflow-x-hidden p-4 lg:p-8">
 
           <Outlet />
         </main>
