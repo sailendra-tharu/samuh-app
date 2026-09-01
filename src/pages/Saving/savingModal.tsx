@@ -68,6 +68,8 @@ export default function SavingForm({
   const { members } = useMembers();
 
   useEffect(() => {
+    // Reset the form when the modal switches between add and edit modes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm(initialData ?? createEmptyForm());
   }, [initialData]);
 
@@ -83,6 +85,8 @@ export default function SavingForm({
     );
 
     if (matchingMember?.id !== undefined) {
+      // Resolve legacy name-only savings to the registered member id.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm((previous) => ({
         ...previous,
         memberId: matchingMember.id ?? null,

@@ -28,6 +28,8 @@ export default function MemberForm({
 
   useEffect(() => {
     if (initialData) {
+      // Load the selected member into the controlled form when editing.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm(initialData);
     } else {
       setForm(emptyForm);

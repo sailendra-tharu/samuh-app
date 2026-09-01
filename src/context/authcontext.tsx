@@ -9,6 +9,8 @@ import {
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
+/* eslint-disable react-refresh/only-export-components -- This module intentionally exports the auth provider and its hook. */
+
 type AuthContextType = {
   user: User | null;
   session: Session | null;

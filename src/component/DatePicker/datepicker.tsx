@@ -97,6 +97,8 @@ export default function BSDatePicker({
 
   useEffect(() => {
     if (!valueAsDate) {
+      // This state mirrors the controlled value so the calendar clears when the form resets.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelected(null);
       return;
     }

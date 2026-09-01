@@ -4,6 +4,7 @@ import PublicRoute from "./publicRoutes";
 import ProtectedRoute from "./privateRoutes";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 
+/* eslint-disable react-refresh/only-export-components -- This module is route configuration, not a component module. */
 
 const Loans = lazy(() => import("@/pages/Loans/loans"));
 const LoanDetails = lazy(() => import("@/pages/Loans/loanDetails"));

@@ -82,6 +82,8 @@ export default function LoanForm({
   useEffect(() => {
     const loan = initialData ?? createEmptyForm();
 
+    // Form state must reset when the modal switches between add and edit modes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm({
       ...loan,
       remainingPrincipal: calculateRemainingPrincipal(

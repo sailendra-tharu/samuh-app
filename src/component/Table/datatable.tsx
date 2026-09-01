@@ -16,6 +16,8 @@ import {
 
 interface DataTableProps<TData> {
 
+  // TanStack uses a value type that is intentionally flexible across accessor columns.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   columns: ColumnDef<TData, any>[];
 
   data: TData[];
@@ -76,6 +78,8 @@ function DataTable<TData>({
 
 
 
+  // TanStack Table manages this instance internally and intentionally returns a non-memoizable API.
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
 
 

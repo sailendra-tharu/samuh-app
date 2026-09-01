@@ -86,6 +86,8 @@ export default function PaymentForm({
     : 0;
 
   useEffect(() => {
+    // Reset the payment form whenever a different loan is selected.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm(createEmptyForm(loan));
   }, [loan]);
 
