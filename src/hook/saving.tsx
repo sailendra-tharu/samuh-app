@@ -12,6 +12,7 @@ import {
   getSavingsByMemberId,
   searchSavings,
   updateSaving,
+  deleteAllSavingsByMemberId,
   type Saving,
 } from "@/api/saving";
 
@@ -56,12 +57,23 @@ export function useSavings() {
     },
   });
 
+  const deleteAllMemberSavingsMutation = useMutation({
+    mutationFn: deleteAllSavingsByMemberId,
+    onSuccess: (_, memberId) => {
+      queryClient.setQueryData<Saving[]>(["savings"], (currentSavings) =>
+        (currentSavings ?? []).filter((saving) => saving.memberId !== memberId)
+      );
+      queryClient.invalidateQueries({ queryKey: ["savings"] });
+    },
+  });
+
   return {
     savings: savingsQuery.data ?? [],
     isLoading: savingsQuery.isLoading,
     createSaving: createMutation.mutateAsync,
     updateSaving: updateMutation.mutateAsync,
     deleteSaving: deleteMutation.mutate,
+    deleteAllMemberSavings: deleteAllMemberSavingsMutation.mutate,
   };
 }
 

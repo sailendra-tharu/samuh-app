@@ -99,17 +99,52 @@ function Savings() {
       ? monthOptions[selectedMonth]?.key
       : undefined;
   const savingsForSelectedSearch = search.trim() ? searchedSavings : savings;
-  const displaySavings = selectedYear !== null
-    ? savingsForSelectedSearch.filter((saving) => {
-        const nepaliDate = new NepaliDate(new Date(saving.date));
+  const displaySavings = (() => {
+    if (selectedYear === null) return [];
 
-        return (
-          nepaliDate.format("YYYY") === String(selectedYear) &&
-          (selectedMonthKey === undefined ||
-            getBSMonthKey(saving.date) === selectedMonthKey)
-        );
-      })
-    : [];
+    const filtered = savingsForSelectedSearch.filter((saving) => {
+      const nepaliDate = new NepaliDate(new Date(saving.date));
+
+      return (
+        nepaliDate.format("YYYY") === String(selectedYear) &&
+        (selectedMonthKey === undefined ||
+          getBSMonthKey(saving.date) === selectedMonthKey)
+      );
+    });
+
+    if (selectedMonthKey !== undefined) {
+      return filtered;
+    }
+
+    const latestPerMember = new Map<string, typeof savingsForSelectedSearch[0]>();
+
+    for (const saving of filtered) {
+      const key = saving.memberId !== null
+        ? `member_${saving.memberId}`
+        : `name_${saving.name.toLowerCase()}`;
+
+      const existing = latestPerMember.get(key);
+      if (!existing) {
+        latestPerMember.set(key, saving);
+      } else {
+        const existingDate = new Date(existing.date);
+        const savingDate = new Date(saving.date);
+
+        if (savingDate > existingDate) {
+          latestPerMember.set(key, saving);
+        } else if (savingDate.getTime() === existingDate.getTime()) {
+          if ((saving.id ?? 0) > (existing.id ?? 0)) {
+            latestPerMember.set(key, saving);
+          }
+        }
+      }
+    }
+
+    return Array.from(latestPerMember.values()).sort((a, b) => {
+      const dateOrder = b.date.localeCompare(a.date);
+      return dateOrder || (b.id ?? 0) - (a.id ?? 0);
+    });
+  })();
 
   const exportSavings = () => {
     if (selectedYear === null || displaySavings.length === 0) return;
@@ -143,10 +178,6 @@ function Savings() {
 
   const saveSaving = async (saving: Saving) => {
     setSaveError("");
-    const isAddingNextMonth = nextMonthSaving !== null;
-    const nextMonthDate = isAddingNextMonth
-      ? new NepaliDate(new Date(saving.date))
-      : null;
 
     try {
       if (editingIndex !== null) {
@@ -158,11 +189,6 @@ function Savings() {
       setOpen(false);
       setNextMonthSaving(null);
       setEditingIndex(null);
-
-      if (nextMonthDate) {
-        setSelectedYear(nextMonthDate.getYear());
-        setSelectedMonth(nextMonthDate.getMonth());
-      }
     } catch (error) {
       const message =
         error instanceof Error

@@ -31,6 +31,7 @@ type DetailRow = ProfitRow & {
 type MonthlySummary = {
   key: string;
   label: string;
+  fineIn: number;
   fineOut: number;
   newMember: number;
   renewal: number;
@@ -50,7 +51,6 @@ const getMonthlyDescription = (row: MonthlySummary) => {
   if (row.newMember > 0) profitSources.push("New Member");
   if (row.renewal > 0) profitSources.push("Renewal Paid");
   if (row.interest > 0) profitSources.push("Interest");
-  if (row.investmentReturn > 0) profitSources.push("Returned");
   if (row.investmentLoss > 0) lossSources.push("Investment");
   if (row.loss - row.investmentLoss > 0) lossSources.push("Other Loss");
 
@@ -127,6 +127,7 @@ const getSavingProfit = (savings: Saving[], selectedMonth: string) => {
   );
 
   return {
+    fineIn: monthSavings.reduce((total, saving) => total + toAmount(saving.fineIn), 0),
     fineOut: monthSavings.reduce((total, saving) => total + toAmount(saving.fineOut), 0),
     newMember: monthSavings.reduce((total, saving) => total + toAmount(saving.newMember), 0),
   };
@@ -197,10 +198,9 @@ const getLoanProfit = (loans: Loan[], selectedMonth: string) => {
 function ProfitLoss() {
   const currentBS = NepaliDate.now();
   const currentYear = currentBS.getYear();
-  const currentMonth = currentBS.getMonth();
   const yearOptions = getYearOptions(currentYear);
   const [selectedYear, setSelectedYear] = useState<number | null>(currentYear);
-  const [selectedMonth, setSelectedMonth] = useState<number | null>(currentMonth);
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [amount, setAmount] = useState<string | null>(null);
   const [details, setDetails] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
@@ -214,6 +214,9 @@ function ProfitLoss() {
     isLoading: investmentsLoading,
     error: investmentsError,
   } = useInvestments();
+  {
+    /* lossEntries */
+  }
   const {
     lossEntries,
     isLoading: lossLoading,
@@ -258,8 +261,7 @@ function ProfitLoss() {
       savingProfit.newMember +
       loanProfit.renewal +
       loanProfit.interest +
-      loanProfit.fineOut +
-      investmentReturn;
+      loanProfit.fineOut;
     const loss = lossEntries
       .filter((entry) => getBSMonthKey(entry.lossDate) === monthKey)
       .reduce((total, entry) => total + entry.amount, 0) + investmentLoss;
@@ -268,6 +270,7 @@ function ProfitLoss() {
     return {
       key: monthKey,
       label: month?.label ?? monthKey,
+      fineIn: savingProfit.fineIn,
       fineOut: savingProfit.fineOut + loanProfit.fineOut,
       newMember: savingProfit.newMember,
       renewal: loanProfit.renewal,
@@ -282,6 +285,7 @@ function ProfitLoss() {
   const emptySummary: MonthlySummary = {
     key: "",
     label: "",
+    fineIn: 0,
     fineOut: 0,
     newMember: 0,
     renewal: 0,
@@ -292,9 +296,44 @@ function ProfitLoss() {
     loss: 0,
     net: 0,
   };
+  const annualRows =
+    selectedYear === null
+      ? []
+      : monthOptions.map((month) => getMonthlySummary(month.key));
+  const annualInvestmentLoss = annualRows.reduce(
+    (total, row) => total + row.investmentLoss,
+    0
+  );
+  const annualInvestmentReturn = annualRows.reduce(
+    (total, row) => total + row.investmentReturn,
+    0
+  );
+  const annualProfit = annualRows.reduce((total, row) => total + row.profit, 0);
+  const annualLoss = annualRows.reduce((total, row) => total + row.loss, 0);
+  const annualNet = annualProfit - annualLoss;
   const selectedSummary = selectedMonthKey
     ? getMonthlySummary(selectedMonthKey)
-    : emptySummary;
+    : selectedYear === null
+      ? emptySummary
+      : {
+          key: `${selectedYear}`,
+          label: `${selectedYear}`,
+          fineIn: annualRows.reduce((total, row) => total + row.fineIn, 0),
+          fineOut: annualRows.reduce((total, row) => total + row.fineOut, 0),
+          newMember: annualRows.reduce((total, row) => total + row.newMember, 0),
+          renewal: annualRows.reduce((total, row) => total + row.renewal, 0),
+          interest: annualRows.reduce((total, row) => total + row.interest, 0),
+          investmentReturn: annualInvestmentReturn,
+          investmentLoss: annualInvestmentLoss,
+          profit: annualProfit,
+          loss: annualLoss,
+          net: annualNet,
+        };
+  const selectedMonthLabel = selectedMonthKey
+    ? monthOptions.find((month) => month.key === selectedMonthKey)?.label ?? selectedMonthKey
+    : selectedYear
+      ? `${selectedYear} - All months`
+      : "Select year";
   const profitRows: ProfitRow[] = selectedMonthKey
     ? [
     {
@@ -321,12 +360,6 @@ function ProfitLoss() {
       amount: selectedSummary.interest,
       details: "Interest amounts recorded in loan payments",
     },
-    {
-      id: "investment-return",
-      category: "Investment Return",
-      amount: selectedSummary.investmentReturn,
-      details: "Returned amounts from investments",
-    },
   ]
     : [];
   const monthlyLoss = selectedMonthKey
@@ -334,24 +367,6 @@ function ProfitLoss() {
         (entry) => getBSMonthKey(entry.lossDate) === selectedMonthKey
       )
     : undefined;
-  const annualRows =
-    selectedYear === null
-      ? []
-      : monthOptions.map((month) => getMonthlySummary(month.key));
-  const annualInvestmentLoss = annualRows.reduce(
-    (total, row) => total + row.investmentLoss,
-    0
-  );
-  const annualInvestmentReturn = annualRows.reduce(
-    (total, row) => total + row.investmentReturn,
-    0
-  );
-  const annualProfit = annualRows.reduce((total, row) => total + row.profit, 0);
-  const annualLoss = annualRows.reduce((total, row) => total + row.loss, 0);
-  const annualNet = annualProfit - annualLoss;
-  const selectedMonthLabel =
-    monthOptions.find((month) => month.key === selectedMonthKey)?.label ?? selectedMonthKey;
-  const selectedInvestmentLoss = selectedSummary.investmentLoss;
   const detailRows: DetailRow[] = selectedMonthKey
     ? [
         ...profitRows.map((row) => ({ ...row, type: "Profit" as const })),
@@ -359,7 +374,7 @@ function ProfitLoss() {
           id: "investment-loss",
           category: "Investment",
           type: "Loss" as const,
-          amount: selectedInvestmentLoss,
+          amount: selectedSummary.investmentLoss,
           details:
             "Invested amounts from the investments table; assigned to the current B.S. month.",
         },
@@ -526,7 +541,7 @@ function ProfitLoss() {
             <TrendingUp className="h-5 w-5 text-emerald-600" />
           </div>
           <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-emerald-700">
-            {!selectedMonthKey ? "Select period" : isLoading ? "—" : formatCurrency(selectedSummary.profit)}
+            {selectedYear === null ? "Select period" : isLoading ? "—" : formatCurrency(selectedSummary.profit)}
           </p>
         </article>
 
@@ -536,7 +551,7 @@ function ProfitLoss() {
             <TrendingDown className="h-5 w-5 text-red-500" />
           </div>
           <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-red-700">
-            {!selectedMonthKey ? "Select period" : reportLoading ? "—" : formatCurrency(selectedSummary.loss)}
+            {selectedYear === null ? "Select period" : reportLoading ? "—" : formatCurrency(selectedSummary.loss)}
           </p>
         </article>
 
@@ -551,7 +566,7 @@ function ProfitLoss() {
             </span>
           </div>
           <p className={`mt-3 text-2xl font-semibold tracking-[-0.04em] ${selectedSummary.net >= 0 ? "text-[#087b55]" : "text-red-600"}`}>
-            {!selectedMonthKey ? "Select period" : reportLoading ? "—" : formatCurrency(selectedSummary.net)}
+            {selectedYear === null ? "Select period" : reportLoading ? "—" : formatCurrency(selectedSummary.profit)}
           </p>
         </article>
       </section>
@@ -568,6 +583,7 @@ function ProfitLoss() {
               <tr>
                 <th className="px-5 py-3 font-medium sm:px-6">Month</th>
                 <th className="min-w-[320px] px-5 py-3 font-medium">Description</th>
+                <th className="px-5 py-3 text-right font-medium">Fine In</th>
                 <th className="px-5 py-3 text-right font-medium">Fine Out</th>
                 <th className="px-5 py-3 text-right font-medium">New Member</th>
                 <th className="px-5 py-3 text-right font-medium">Renewal</th>
@@ -600,6 +616,7 @@ function ProfitLoss() {
                       </>
                     )}
                   </td>
+                  <td className="px-5 py-4 text-right text-slate-700">{isLoading ? "—" : formatCurrency(row.fineIn)}</td>
                   <td className="px-5 py-4 text-right text-slate-700">{isLoading ? "—" : formatCurrency(row.fineOut)}</td>
                   <td className="px-5 py-4 text-right text-slate-700">{isLoading ? "—" : formatCurrency(row.newMember)}</td>
                 <td className="px-5 py-4 text-right text-slate-700">{isLoading ? "—" : formatCurrency(row.renewal)}</td>
@@ -614,20 +631,7 @@ function ProfitLoss() {
                 </tr>
               ))}
             </tbody>
-            <tfoot className="border-t border-slate-200 bg-slate-50 font-semibold">
-              <tr>
-                <td className="px-5 py-4 text-slate-800 sm:px-6">Year total</td>
-                <td className="px-5 py-4 text-xs text-slate-500">Profit and loss categories for the selected year</td>
-                <td colSpan={4} />
-                <td className="px-5 py-4 text-right text-[#087b55]">{reportLoading ? "—" : formatCurrency(annualInvestmentReturn)}</td>
-                <td className="px-5 py-4 text-right text-red-600">{reportLoading ? "—" : formatCurrency(annualInvestmentLoss)}</td>
-                <td className="px-5 py-4 text-right text-[#087b55]">{isLoading ? "—" : formatCurrency(annualProfit)}</td>
-                <td className="px-5 py-4 text-right text-red-600">{reportLoading ? "—" : formatCurrency(annualLoss)}</td>
-                <td className={`px-5 py-4 text-right sm:px-6 ${annualNet >= 0 ? "text-[#087b55]" : "text-red-600"}`}>
-                  {reportLoading ? "—" : formatCurrency(annualNet)}
-                </td>
-              </tr>
-            </tfoot>
+            
           </table>
         </div>
 
@@ -641,8 +645,8 @@ function ProfitLoss() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)] sm:p-6">
-        <div>
+      <section className="rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)]">
+        <div className="border-b border-slate-100 px-5 py-5 sm:px-6">
           <p className="text-base font-semibold text-slate-900">Add Loss</p>
           <p className="mt-1 text-sm text-slate-500">Investments are already included automatically. Add only other losses here.</p>
         </div>

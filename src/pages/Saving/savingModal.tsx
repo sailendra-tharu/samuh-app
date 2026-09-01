@@ -96,7 +96,7 @@ export default function SavingForm({
     }
   }, [initialData, members]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, type, value } = e.target;
     const matchingMember =
       name === "name"
@@ -199,13 +199,21 @@ export default function SavingForm({
           </div>
 
           <div className="grid gap-5 sm:grid-cols-2">
-            <TextField
-              label="Group Name"
-              name="groupName"
-              value={form.groupName}
-              onChange={handleChange}
-              placeholder="Enter group name"
-            />
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Group Name
+              </label>
+              <select
+                name="groupName"
+                value={form.groupName}
+                onChange={handleChange}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+              >
+                <option value="">Select group</option>
+                <option value="Primary">Primary</option>
+                <option value="Secondary">Secondary</option>
+              </select>
+            </div>
             <TextField
               label="New Member"
               name="newMember"

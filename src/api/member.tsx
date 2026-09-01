@@ -91,15 +91,25 @@ export async function updateMember(member: Member) {
 }
 
 
-// Delete member
+// Delete member and associated savings
 export async function deleteMember(id: number) {
-  const { error } = await supabase
+  // First delete associated savings to avoid foreign key constraints
+  const { error: savingsError } = await supabase
+    .from("saving")
+    .delete()
+    .eq("member_id", id);
+
+  if (savingsError) {
+    throw savingsError;
+  }
+
+  const { error: memberError } = await supabase
     .from("members")
     .delete()
     .eq("id", id);
 
-  if (error) {
-    throw error;
+  if (memberError) {
+    throw memberError;
   }
 }
 

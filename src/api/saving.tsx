@@ -219,6 +219,15 @@ export async function deleteSaving(id: number) {
   if (error) throw error;
 }
 
+export async function deleteAllSavingsByMemberId(memberId: number) {
+  const { error } = await supabase
+    .from("saving")
+    .delete()
+    .eq("member_id", memberId);
+
+  if (error) throw error;
+}
+
 export async function searchSavings(query: string) {
   if (!query.trim()) return getSavings();
 

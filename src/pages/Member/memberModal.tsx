@@ -37,7 +37,7 @@ export default function MemberForm({
   }, [initialData]);
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     setForm((prev) => ({
       ...prev,
@@ -112,14 +112,17 @@ export default function MemberForm({
         <label className="mb-1 block text-sm font-medium text-gray-700">
           Group
         </label>
-        <input
+        <select
           name="group"
           value={form.group}
           onChange={handleChange}
-          placeholder="Enter group"
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
+          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
           required
-        />
+        >
+          <option value="">Select group</option>
+          <option value="Primary">Primary</option>
+          <option value="Secondary">Secondary</option>
+        </select>
       </div>
 
       {/* Join Date */}
