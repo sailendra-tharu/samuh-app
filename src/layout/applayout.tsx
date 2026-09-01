@@ -37,6 +37,8 @@ function Layout() {
           ? "Manage lending, repayments, and outstanding balances in one place."
           : section === "profit-loss"
             ? "Enter and review monthly profit and loss details in one place."
+          : section === "investment"
+            ? "Track group investments, current value, and returns in one place."
           : "Review the latest details for your group.";
   const adminInitial = user?.email?.charAt(0).toUpperCase() || "A";
 

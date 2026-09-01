@@ -1,7 +1,5 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
-  ChartNoAxesCombined,
-  CircleDollarSign,
   Plus,
   Trash2,
   TrendingDown,
@@ -12,6 +10,8 @@ import NepaliDate from "nepali-date-converter";
 import type { Loan } from "@/api/loan";
 import type { LossEntry } from "@/api/loss";
 import type { Saving } from "@/api/saving";
+import Pagination from "@/component/Pagination/pagination";
+import { useInvestments } from "@/hook/investment";
 import { useLossEntries } from "@/hook/loss";
 import { useLoans } from "@/hook/loan";
 import { useSavings } from "@/hook/saving";
@@ -23,6 +23,11 @@ type ProfitRow = {
   details: string;
 };
 
+type DetailRow = ProfitRow & {
+  type: "Profit" | "Loss";
+  lossId?: number;
+};
+
 type MonthlySummary = {
   key: string;
   label: string;
@@ -30,9 +35,29 @@ type MonthlySummary = {
   newMember: number;
   renewal: number;
   interest: number;
+  investmentReturn: number;
+  investmentLoss: number;
   profit: number;
   loss: number;
   net: number;
+};
+
+const getMonthlyDescription = (row: MonthlySummary) => {
+  const profitSources: string[] = [];
+  const lossSources: string[] = [];
+
+  if (row.fineOut > 0) profitSources.push("Fine Out");
+  if (row.newMember > 0) profitSources.push("New Member");
+  if (row.renewal > 0) profitSources.push("Renewal Paid");
+  if (row.interest > 0) profitSources.push("Interest");
+  if (row.investmentReturn > 0) profitSources.push("Returned");
+  if (row.investmentLoss > 0) lossSources.push("Investment");
+  if (row.loss - row.investmentLoss > 0) lossSources.push("Other Loss");
+
+  return {
+    profit: profitSources.length > 0 ? profitSources.join(", ") : "None",
+    loss: lossSources.length > 0 ? lossSources.join(", ") : "None",
+  };
 };
 
 const money = new Intl.NumberFormat("en-IN", {
@@ -149,11 +174,23 @@ const getLoanProfit = (loans: Loan[], selectedMonth: string) => {
 
     return total + Math.max(toAmount(loan.renewalPaid) - allPaymentRenewal, 0);
   }, 0);
+  const interest = loans.reduce(
+    (total, loan) =>
+      total +
+      loan.payments.reduce(
+        (paymentTotal, payment) =>
+          getBSMonthKey(payment.paymentDate) === selectedMonth
+            ? paymentTotal + toAmount(payment.interestPaid)
+            : paymentTotal,
+        0
+      ),
+    0
+  );
 
   return {
     fineOut,
     renewal: renewal + renewalWithoutPaymentHistory,
-    interest: monthLoans.reduce((total, loan) => total + toAmount(loan.interest), 0),
+    interest,
   };
 };
 
@@ -161,14 +198,22 @@ function ProfitLoss() {
   const currentBS = NepaliDate.now();
   const currentYear = currentBS.getYear();
   const currentMonth = currentBS.getMonth();
-  const yearOptions = useMemo(() => getYearOptions(currentYear), [currentYear]);
-  const [selectedYear, setSelectedYear] = useState(currentYear);
-  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  const yearOptions = getYearOptions(currentYear);
+  const [selectedYear, setSelectedYear] = useState<number | null>(currentYear);
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(currentMonth);
   const [amount, setAmount] = useState<string | null>(null);
   const [details, setDetails] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
+  const [overviewPage, setOverviewPage] = useState(1);
+  const [detailsPage, setDetailsPage] = useState(1);
+  const pageSize = 10;
   const { savings, isLoading: savingsLoading } = useSavings();
   const { loans, isLoading: loansLoading, error: loansError } = useLoans();
+  const {
+    investments,
+    isLoading: investmentsLoading,
+    error: investmentsError,
+  } = useInvestments();
   const {
     lossEntries,
     isLoading: lossLoading,
@@ -178,22 +223,46 @@ function ProfitLoss() {
     isSaving,
     isDeleting,
   } = useLossEntries();
-  const isLoading = savingsLoading || loansLoading;
+  const isLoading = savingsLoading || loansLoading || investmentsLoading;
   const reportLoading = isLoading || lossLoading;
 
-  const monthOptions = useMemo(() => getMonthOptions(selectedYear), [selectedYear]);
-  const selectedMonthKey = new NepaliDate(selectedYear, selectedMonth, 1).format("YYYY-MM");
+  const monthOptions = getMonthOptions(selectedYear ?? currentYear);
+  const selectedMonthKey =
+    selectedYear !== null && selectedMonth !== null
+      ? new NepaliDate(selectedYear, selectedMonth, 1).format("YYYY-MM")
+      : null;
+  const currentMonthKey = currentBS.format("YYYY-MM");
+  const getInvestmentLoss = (monthKey: string) => {
+    if (monthKey !== currentMonthKey) return 0;
+
+    return investments.reduce(
+      (total, investment) => total + (investment.investedAmount ?? 0),
+      0
+    );
+  };
+  const getInvestmentReturn = (monthKey: string) => {
+    if (monthKey !== currentMonthKey) return 0;
+
+    return investments.reduce(
+      (total, investment) => total + investment.returnValue,
+      0
+    );
+  };
   const getMonthlySummary = (monthKey: string): MonthlySummary => {
     const savingProfit = getSavingProfit(savings, monthKey);
     const loanProfit = getLoanProfit(loans, monthKey);
+    const investmentReturn = getInvestmentReturn(monthKey);
+    const investmentLoss = getInvestmentLoss(monthKey);
     const profit =
       savingProfit.fineOut +
       savingProfit.newMember +
       loanProfit.renewal +
-      loanProfit.interest;
+      loanProfit.interest +
+      loanProfit.fineOut +
+      investmentReturn;
     const loss = lossEntries
       .filter((entry) => getBSMonthKey(entry.lossDate) === monthKey)
-      .reduce((total, entry) => total + entry.amount, 0);
+      .reduce((total, entry) => total + entry.amount, 0) + investmentLoss;
     const month = monthOptions.find((option) => option.key === monthKey);
 
     return {
@@ -203,13 +272,31 @@ function ProfitLoss() {
       newMember: savingProfit.newMember,
       renewal: loanProfit.renewal,
       interest: loanProfit.interest,
+      investmentReturn,
+      investmentLoss,
       profit,
       loss,
       net: profit - loss,
     };
   };
-  const selectedSummary = getMonthlySummary(selectedMonthKey);
-  const profitRows: ProfitRow[] = [
+  const emptySummary: MonthlySummary = {
+    key: "",
+    label: "",
+    fineOut: 0,
+    newMember: 0,
+    renewal: 0,
+    interest: 0,
+    investmentReturn: 0,
+    investmentLoss: 0,
+    profit: 0,
+    loss: 0,
+    net: 0,
+  };
+  const selectedSummary = selectedMonthKey
+    ? getMonthlySummary(selectedMonthKey)
+    : emptySummary;
+  const profitRows: ProfitRow[] = selectedMonthKey
+    ? [
     {
       id: "fine-out",
       category: "Fine Out",
@@ -232,21 +319,81 @@ function ProfitLoss() {
       id: "interest",
       category: "Interest",
       amount: selectedSummary.interest,
-      details: "Automatically calculated from loan records",
+      details: "Interest amounts recorded in loan payments",
     },
-  ];
-  const monthlyLoss = lossEntries.find(
-    (entry) => getBSMonthKey(entry.lossDate) === selectedMonthKey
+    {
+      id: "investment-return",
+      category: "Investment Return",
+      amount: selectedSummary.investmentReturn,
+      details: "Returned amounts from investments",
+    },
+  ]
+    : [];
+  const monthlyLoss = selectedMonthKey
+    ? lossEntries.find(
+        (entry) => getBSMonthKey(entry.lossDate) === selectedMonthKey
+      )
+    : undefined;
+  const annualRows =
+    selectedYear === null
+      ? []
+      : monthOptions.map((month) => getMonthlySummary(month.key));
+  const annualInvestmentLoss = annualRows.reduce(
+    (total, row) => total + row.investmentLoss,
+    0
   );
-  const annualRows = monthOptions.map((month) => getMonthlySummary(month.key));
+  const annualInvestmentReturn = annualRows.reduce(
+    (total, row) => total + row.investmentReturn,
+    0
+  );
   const annualProfit = annualRows.reduce((total, row) => total + row.profit, 0);
   const annualLoss = annualRows.reduce((total, row) => total + row.loss, 0);
   const annualNet = annualProfit - annualLoss;
   const selectedMonthLabel =
     monthOptions.find((month) => month.key === selectedMonthKey)?.label ?? selectedMonthKey;
+  const selectedInvestmentLoss = selectedSummary.investmentLoss;
+  const detailRows: DetailRow[] = selectedMonthKey
+    ? [
+        ...profitRows.map((row) => ({ ...row, type: "Profit" as const })),
+        {
+          id: "investment-loss",
+          category: "Investment",
+          type: "Loss" as const,
+          amount: selectedInvestmentLoss,
+          details:
+            "Invested amounts from the investments table; assigned to the current B.S. month.",
+        },
+        ...(monthlyLoss
+          ? [
+              {
+                id: `monthly-loss-${monthlyLoss.id ?? "entry"}`,
+                category: "Monthly Loss",
+                type: "Loss" as const,
+                amount: monthlyLoss.amount,
+                details: monthlyLoss.details || "—",
+                lossId: monthlyLoss.id,
+              },
+            ]
+          : []),
+      ]
+    : [];
+  const overviewPageCount = Math.max(1, Math.ceil(annualRows.length / pageSize));
+  const detailsPageCount = Math.max(1, Math.ceil(detailRows.length / pageSize));
+  const activeOverviewPage = Math.min(overviewPage, overviewPageCount);
+  const activeDetailsPage = Math.min(detailsPage, detailsPageCount);
+  const paginatedAnnualRows = annualRows.slice(
+    (activeOverviewPage - 1) * pageSize,
+    activeOverviewPage * pageSize
+  );
+  const paginatedDetailRows = detailRows.slice(
+    (activeDetailsPage - 1) * pageSize,
+    activeDetailsPage * pageSize
+  );
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (!selectedMonthKey) return;
 
     const amountValue = amount ?? (monthlyLoss ? String(monthlyLoss.amount) : "");
     const lossDetails = details ?? monthlyLoss?.details ?? "";
@@ -290,18 +437,19 @@ function ProfitLoss() {
       <section className="relative overflow-hidden rounded-[28px] bg-[#103f34] px-6 py-7 text-white shadow-[0_18px_45px_-24px_rgba(16,63,52,0.8)] sm:px-8 sm:py-8">
         <div className="relative z-10 flex items-start justify-between gap-5">
           <div>
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-medium text-emerald-50">
-              <ChartNoAxesCombined className="h-3.5 w-3.5" />
-              Monthly report
-            </div>
             <h2 className="text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
               Profit &amp; Loss
             </h2>
             <p className="mt-3 max-w-lg text-sm leading-6 text-emerald-100/75 sm:text-base">
-              Profit is calculated automatically. Add only the losses for the selected month.
+            Monitor the overall financial performance of your investments by tracking realized gains, losses, and changes in investment value over time.
             </p>
           </div>
-          <CircleDollarSign className="hidden h-12 w-12 text-emerald-200/70 sm:block" />
+          <span
+            aria-hidden="true"
+            className="hidden h-12 w-12 items-center justify-center text-4xl font-semibold text-emerald-200/70 sm:flex"
+          >
+            रु
+          </span>
         </div>
 
         <div className="absolute -right-16 -top-28 h-72 w-72 rounded-full border-[30px] border-white/5" />
@@ -319,6 +467,12 @@ function ProfitLoss() {
         </div>
       )}
 
+      {investmentsError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          Investment data could not be loaded. Check that the <code>investments</code> table is available.
+        </div>
+      )}
+
       {actionError && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {actionError}
@@ -332,19 +486,32 @@ function ProfitLoss() {
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
           <select
-            value={selectedYear}
-            onChange={(event) => setSelectedYear(Number(event.target.value))}
+            value={selectedYear ?? ""}
+            onChange={(event) => {
+              const value = event.target.value;
+              setSelectedYear(value ? Number(value) : null);
+              setSelectedMonth(null);
+              setOverviewPage(1);
+              setDetailsPage(1);
+            }}
             className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 outline-none focus:border-[#087b55] focus:ring-2 focus:ring-[#b9e5d1] sm:w-28"
             aria-label="Profit and loss report year"
           >
+            <option value="">Select year</option>
             {yearOptions.map((year) => <option key={year} value={year}>{year}</option>)}
           </select>
           <select
-            value={selectedMonth}
-            onChange={(event) => setSelectedMonth(Number(event.target.value))}
+            value={selectedMonth ?? ""}
+            onChange={(event) => {
+              const value = event.target.value;
+              setSelectedMonth(value ? Number(value) : null);
+              setDetailsPage(1);
+            }}
+            disabled={selectedYear === null}
             className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 outline-none focus:border-[#087b55] focus:ring-2 focus:ring-[#b9e5d1] sm:w-36"
             aria-label="Profit and loss report month"
           >
+            <option value="">Select month</option>
             {monthOptions.map((month) => (
               <option key={month.key} value={month.value}>{month.label}</option>
             ))}
@@ -355,65 +522,92 @@ function ProfitLoss() {
       <section className="grid gap-4 sm:grid-cols-3">
         <article className="rounded-2xl border border-emerald-100 bg-emerald-50 p-5 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)]">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-medium text-emerald-700">Automatic profit</p>
+            <p className="text-sm font-medium text-emerald-700">profit</p>
             <TrendingUp className="h-5 w-5 text-emerald-600" />
           </div>
           <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-emerald-700">
-            {isLoading ? "—" : formatCurrency(selectedSummary.profit)}
+            {!selectedMonthKey ? "Select period" : isLoading ? "—" : formatCurrency(selectedSummary.profit)}
           </p>
         </article>
 
         <article className="rounded-2xl border border-red-100 bg-red-50 p-5 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)]">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-medium text-red-700">Manual loss</p>
+            <p className="text-sm font-medium text-red-700">Loss</p>
             <TrendingDown className="h-5 w-5 text-red-500" />
           </div>
           <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-red-700">
-            {lossLoading ? "—" : formatCurrency(selectedSummary.loss)}
+            {!selectedMonthKey ? "Select period" : reportLoading ? "—" : formatCurrency(selectedSummary.loss)}
           </p>
         </article>
 
         <article className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)]">
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm font-medium text-slate-500">Net profit</p>
-            <CircleDollarSign className="h-5 w-5 text-[#087b55]" />
+            <span
+              aria-hidden="true"
+              className="flex h-5 w-5 items-center justify-center text-sm font-bold text-[#087b55]"
+            >
+              रु
+            </span>
           </div>
           <p className={`mt-3 text-2xl font-semibold tracking-[-0.04em] ${selectedSummary.net >= 0 ? "text-[#087b55]" : "text-red-600"}`}>
-            {reportLoading ? "—" : formatCurrency(selectedSummary.net)}
+            {!selectedMonthKey ? "Select period" : reportLoading ? "—" : formatCurrency(selectedSummary.net)}
           </p>
         </article>
       </section>
 
       <section className="rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)]">
         <div className="border-b border-slate-100 px-5 py-5 sm:px-6">
-          <p className="text-base font-semibold text-slate-900">{selectedYear} monthly overview</p>
-          <p className="mt-1 text-sm text-slate-500">Automatic profit and manual loss for every month of the selected year.</p>
+          <p className="text-base font-semibold text-slate-900">{selectedYear ?? "Select year"} monthly overview</p>
+          <p className="mt-1 text-sm text-slate-500">profit and loss for every month of the selected year.</p>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="min-w-[920px] w-full text-left text-sm">
+          <table className="min-w-[1140px] w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-[0.08em] text-slate-500">
               <tr>
                 <th className="px-5 py-3 font-medium sm:px-6">Month</th>
+                <th className="min-w-[320px] px-5 py-3 font-medium">Description</th>
                 <th className="px-5 py-3 text-right font-medium">Fine Out</th>
                 <th className="px-5 py-3 text-right font-medium">New Member</th>
                 <th className="px-5 py-3 text-right font-medium">Renewal</th>
                 <th className="px-5 py-3 text-right font-medium">Interest</th>
+                <th className="px-5 py-3 text-right font-medium">Returned</th>
+                <th className="px-5 py-3 text-right font-medium">Investment Loss</th>
                 <th className="px-5 py-3 text-right font-medium">Profit</th>
                 <th className="px-5 py-3 text-right font-medium">Loss</th>
                 <th className="px-5 py-3 text-right font-medium sm:px-6">Net</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {annualRows.map((row) => (
+              {selectedYear === null && (
+                <tr>
+                  <td colSpan={11} className="px-5 py-8 text-center text-sm text-slate-500">
+                    Select a year and month to view the report.
+                  </td>
+                </tr>
+              )}
+              {paginatedAnnualRows.map((row) => (
                 <tr key={row.key} className={row.key === selectedMonthKey ? "bg-emerald-50/60" : undefined}>
                   <td className="px-5 py-4 font-medium text-slate-800 sm:px-6">{row.label}</td>
+                  <td className="px-5 py-4 text-xs leading-5 text-slate-500">
+                    {reportLoading ? (
+                      "Calculating profit and loss..."
+                    ) : (
+                      <>
+                        <p><span className="font-semibold text-[#087b55]">Profit:</span> {getMonthlyDescription(row).profit}</p>
+                        <p><span className="font-semibold text-red-600">Loss:</span> {getMonthlyDescription(row).loss}</p>
+                      </>
+                    )}
+                  </td>
                   <td className="px-5 py-4 text-right text-slate-700">{isLoading ? "—" : formatCurrency(row.fineOut)}</td>
                   <td className="px-5 py-4 text-right text-slate-700">{isLoading ? "—" : formatCurrency(row.newMember)}</td>
-                  <td className="px-5 py-4 text-right text-slate-700">{isLoading ? "—" : formatCurrency(row.renewal)}</td>
+                <td className="px-5 py-4 text-right text-slate-700">{isLoading ? "—" : formatCurrency(row.renewal)}</td>
                   <td className="px-5 py-4 text-right text-slate-700">{isLoading ? "—" : formatCurrency(row.interest)}</td>
+                  <td className="px-5 py-4 text-right font-semibold text-[#087b55]">{reportLoading ? "—" : formatCurrency(row.investmentReturn)}</td>
+                  <td className="px-5 py-4 text-right font-semibold text-red-600">{reportLoading ? "—" : formatCurrency(row.investmentLoss)}</td>
                   <td className="px-5 py-4 text-right font-semibold text-[#087b55]">{isLoading ? "—" : formatCurrency(row.profit)}</td>
-                  <td className="px-5 py-4 text-right font-semibold text-red-600">{lossLoading ? "—" : formatCurrency(row.loss)}</td>
+                  <td className="px-5 py-4 text-right font-semibold text-red-600">{reportLoading ? "—" : formatCurrency(row.loss)}</td>
                   <td className={`px-5 py-4 text-right font-semibold sm:px-6 ${row.net >= 0 ? "text-[#087b55]" : "text-red-600"}`}>
                     {reportLoading ? "—" : formatCurrency(row.net)}
                   </td>
@@ -423,9 +617,12 @@ function ProfitLoss() {
             <tfoot className="border-t border-slate-200 bg-slate-50 font-semibold">
               <tr>
                 <td className="px-5 py-4 text-slate-800 sm:px-6">Year total</td>
+                <td className="px-5 py-4 text-xs text-slate-500">Profit and loss categories for the selected year</td>
                 <td colSpan={4} />
+                <td className="px-5 py-4 text-right text-[#087b55]">{reportLoading ? "—" : formatCurrency(annualInvestmentReturn)}</td>
+                <td className="px-5 py-4 text-right text-red-600">{reportLoading ? "—" : formatCurrency(annualInvestmentLoss)}</td>
                 <td className="px-5 py-4 text-right text-[#087b55]">{isLoading ? "—" : formatCurrency(annualProfit)}</td>
-                <td className="px-5 py-4 text-right text-red-600">{lossLoading ? "—" : formatCurrency(annualLoss)}</td>
+                <td className="px-5 py-4 text-right text-red-600">{reportLoading ? "—" : formatCurrency(annualLoss)}</td>
                 <td className={`px-5 py-4 text-right sm:px-6 ${annualNet >= 0 ? "text-[#087b55]" : "text-red-600"}`}>
                   {reportLoading ? "—" : formatCurrency(annualNet)}
                 </td>
@@ -433,12 +630,21 @@ function ProfitLoss() {
             </tfoot>
           </table>
         </div>
+
+        <div className="px-5 pb-5 sm:px-6">
+          <Pagination
+            totalItems={annualRows.length}
+            currentPage={activeOverviewPage}
+            pageSize={pageSize}
+            onPageChange={setOverviewPage}
+          />
+        </div>
       </section>
 
       <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)] sm:p-6">
         <div>
-          <p className="text-base font-semibold text-slate-900">Add manual loss</p>
-          <p className="mt-1 text-sm text-slate-500">Profit categories below are calculated from your records automatically.</p>
+          <p className="text-base font-semibold text-slate-900">Add Loss</p>
+          <p className="mt-1 text-sm text-slate-500">Investments are already included automatically. Add only other losses here.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-[1fr_1.5fr_auto] lg:items-end">
@@ -471,7 +677,7 @@ function ProfitLoss() {
 
           <button
             type="submit"
-            disabled={isSaving}
+            disabled={isSaving || !selectedMonthKey}
             className="flex items-center justify-center gap-2 rounded-lg bg-[#087b55] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#07583e] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Plus className="h-4 w-4" />
@@ -483,7 +689,7 @@ function ProfitLoss() {
       <section className="rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)]">
         <div className="border-b border-slate-100 px-5 py-5 sm:px-6">
           <p className="text-base font-semibold text-slate-900">Monthly details</p>
-          <p className="mt-1 text-sm text-slate-500">Automatic profits and manually entered losses for {selectedMonthLabel}.</p>
+          <p className="mt-1 text-sm text-slate-500">Profits and losses for {selectedMonthLabel}.</p>
         </div>
 
         <div className="overflow-x-auto">
@@ -498,38 +704,58 @@ function ProfitLoss() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {profitRows.map((row) => (
+              {!selectedMonthKey && (
+                <tr>
+                  <td colSpan={5} className="px-5 py-8 text-center text-sm text-slate-500">
+                    Select a year and month to view the details.
+                  </td>
+                </tr>
+              )}
+              {paginatedDetailRows.map((row) => (
                 <tr key={row.id}>
                   <td className="px-5 py-4 font-medium text-slate-800 sm:px-6">{row.category}</td>
-                  <td className="px-5 py-4 font-medium text-[#087b55]">Profit</td>
+                  <td className={`px-5 py-4 font-medium ${row.type === "Profit" ? "text-[#087b55]" : "text-red-600"}`}>
+                    {row.type}
+                  </td>
                   <td className="px-5 py-4 text-slate-500">{row.details}</td>
-                  <td className="px-5 py-4 text-right font-semibold text-[#087b55]">+{formatCurrency(row.amount)}</td>
-                  <td className="px-5 py-4 text-right text-xs text-slate-400 sm:px-6">Automatic</td>
+                  <td className={`px-5 py-4 text-right font-semibold ${row.type === "Profit" ? "text-[#087b55]" : "text-red-600"}`}>
+                    {row.type === "Profit" ? "+" : "-"}{formatCurrency(row.amount)}
+                  </td>
+                  <td className="px-5 py-4 text-right sm:px-6">
+                    {row.lossId !== undefined ? (
+                      <button
+                        type="button"
+                        onClick={() => void deleteLossEntry(row.lossId as number)}
+                        disabled={isDeleting}
+                        className="rounded-lg p-2 text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        aria-label="Delete monthly loss"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    ) : (
+                      <span className="text-xs text-slate-400">Automatic</span>
+                    )}
+                  </td>
                 </tr>
               ))}
-              {monthlyLoss && (
-                <tr key={monthlyLoss.id}>
-                  <td className="px-5 py-4 font-medium text-slate-800 sm:px-6">Monthly Loss</td>
-                  <td className="px-5 py-4 font-medium text-red-600">Loss</td>
-                  <td className="max-w-xs truncate px-5 py-4 text-slate-500">{monthlyLoss.details || "—"}</td>
-                  <td className="px-5 py-4 text-right font-semibold text-red-600">-{formatCurrency(monthlyLoss.amount)}</td>
-                  <td className="px-5 py-4 text-right sm:px-6">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (monthlyLoss.id !== undefined) void deleteLossEntry(monthlyLoss.id);
-                      }}
-                      disabled={isDeleting || monthlyLoss.id === undefined}
-                      className="rounded-lg p-2 text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-                      aria-label="Delete monthly loss"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+              {selectedMonthKey && detailRows.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-5 py-8 text-center text-sm text-slate-500">
+                    No details recorded for this month.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="px-5 pb-5 sm:px-6">
+          <Pagination
+            totalItems={detailRows.length}
+            currentPage={activeDetailsPage}
+            pageSize={pageSize}
+            onPageChange={setDetailsPage}
+          />
         </div>
       </section>
     </div>

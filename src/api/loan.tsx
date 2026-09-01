@@ -13,6 +13,7 @@ export interface Loan {
   fineIn: number | null;
   fineOut: number | null;
   interest: number | null;
+  interestPaid: number;
   emi: number | null;
   renewalPaid: number;
   paidAmount: number;
@@ -28,6 +29,7 @@ export interface LoanPayment {
   paymentDate: string;
   amount: number;
   finePaid: number;
+  interestPaid: number;
   renewalPaid: number;
 }
 
@@ -54,10 +56,13 @@ type RawLoanPayment = {
   payment_date: string;
   amount: number | string | null;
   fine_paid?: number | string | null;
+  interest_paid?: number | string | null;
   renewal_paid?: number | string | null;
 };
 
 const loanSelect =
+  "*, members(name), loan_payments(id, payment_date, amount, fine_paid, interest_paid, renewal_paid)";
+const withoutInterestPaidLoanSelect =
   "*, members(name), loan_payments(id, payment_date, amount, fine_paid, renewal_paid)";
 const legacyLoanSelect =
   "*, members(name), loan_payments(id, payment_date, amount)";
@@ -98,10 +103,21 @@ const isMissingRenewalPaidColumnError = (error: unknown) => {
 const isMissingPaymentBreakdownColumnError = (error: unknown) => {
   const message = getSupabaseErrorMessage(error).toLowerCase();
   const missingColumn =
-    message.includes("fine_paid") || message.includes("renewal_paid");
+    message.includes("fine_paid") ||
+    message.includes("interest_paid") ||
+    message.includes("renewal_paid");
 
   return (
     missingColumn &&
+    (message.includes("schema cache") || message.includes("does not exist"))
+  );
+};
+
+const isMissingInterestPaidColumnError = (error: unknown) => {
+  const message = getSupabaseErrorMessage(error).toLowerCase();
+
+  return (
+    message.includes("interest_paid") &&
     (message.includes("schema cache") || message.includes("does not exist"))
   );
 };
@@ -218,6 +234,10 @@ const toLoan = (loan: RawLoan): Loan => {
       payment.renewal_paid === null || payment.renewal_paid === undefined
         ? 0
         : Number(payment.renewal_paid),
+    interestPaid:
+      payment.interest_paid === null || payment.interest_paid === undefined
+        ? 0
+        : Number(payment.interest_paid),
   }));
   const paidAmount = (loan.loan_payments ?? []).reduce(
     (total, payment) =>
@@ -227,6 +247,10 @@ const toLoan = (loan: RawLoan): Loan => {
   const remainingPrincipal = calculateRemainingPrincipal(
     principalAmount,
     paidAmount
+  );
+  const interestPaid = payments.reduce(
+    (total, payment) => total + payment.interestPaid,
+    0
   );
   const remainingFine = calculateRemainingFine(fineIn, fineOut);
   const status: LoanStatus =
@@ -249,6 +273,7 @@ const toLoan = (loan: RawLoan): Loan => {
     fineIn,
     fineOut,
     interest: calculateLoanInterest(remainingPrincipal),
+    interestPaid,
     emi:
       calculateLoanEmi(
         principalAmount,
@@ -269,6 +294,16 @@ export async function getLoans() {
     .order("id", { ascending: false });
 
   if (!error) return data.map(toLoan);
+
+  const withoutInterestPaid = await supabase
+    .from("loans")
+    .select(withoutInterestPaidLoanSelect)
+    .order("loan_date", { ascending: false })
+    .order("id", { ascending: false });
+
+  if (!withoutInterestPaid.error) {
+    return withoutInterestPaid.data.map(toLoan);
+  }
 
   const legacy = await supabase
     .from("loans")
@@ -300,6 +335,17 @@ export async function getLoanById(id: number) {
   if (!error) {
     if (!data) return null;
     return toLoan(data);
+  }
+
+  const withoutInterestPaid = await supabase
+    .from("loans")
+    .select(withoutInterestPaidLoanSelect)
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!withoutInterestPaid.error) {
+    if (!withoutInterestPaid.data) return null;
+    return toLoan(withoutInterestPaid.data);
   }
 
   const legacy = await supabase
@@ -481,16 +527,9 @@ const formatLocalDate = (date: Date) => {
 };
 
 export async function renewLoan(loanId: number) {
-  const { data, error } = await supabase
-    .from("loans")
-    .select(loanSelect)
-    .eq("id", loanId)
-    .maybeSingle();
+  const loan = await getLoanById(loanId);
 
-  if (error) throw error;
-  if (!data) throw new Error("The selected loan no longer exists.");
-
-  const loan = toLoan(data);
+  if (!loan) throw new Error("The selected loan no longer exists.");
 
   if (loan.status === "renewed") {
     throw new Error("This loan has already been renewed.");
@@ -561,6 +600,10 @@ export async function createLoanPayment(payment: LoanPayment) {
     throw new Error("Fine paid must be a whole number of 0 or more.");
   }
 
+  if (!Number.isInteger(payment.interestPaid) || payment.interestPaid < 0) {
+    throw new Error("Interest paid must be a whole number of 0 or more.");
+  }
+
   if (!Number.isInteger(payment.renewalPaid) || payment.renewalPaid < 0) {
     throw new Error("Renewal paid must be a whole number of 0 or more.");
   }
@@ -568,9 +611,10 @@ export async function createLoanPayment(payment: LoanPayment) {
   if (
     payment.amount === 0 &&
     payment.finePaid === 0 &&
+    payment.interestPaid === 0 &&
     payment.renewalPaid === 0
   ) {
-    throw new Error("Enter a principal, fine, or renewal payment.");
+    throw new Error("Enter a principal, fine, interest, or renewal payment.");
   }
 
   let renewalPaidColumnAvailable = true;
@@ -686,12 +730,42 @@ export async function createLoanPayment(payment: LoanPayment) {
       payment_date: payment.paymentDate,
       amount: payment.amount,
       fine_paid: payment.finePaid,
+      interest_paid: payment.interestPaid,
       renewal_paid: payment.renewalPaid,
     })
     .select()
     .single();
 
+  if (error && isMissingInterestPaidColumnError(error) && payment.interestPaid > 0) {
+    throw new Error(
+      "The interest_paid column is not available in Supabase. Confirm it exists in public.loan_payments and refresh the Supabase schema cache."
+    );
+  }
+
   if (error && isMissingPaymentBreakdownColumnError(error)) {
+    const withoutInterestPaidInsert = await supabase
+      .from("loan_payments")
+      .insert({
+        loan_id: payment.loanId,
+        payment_date: payment.paymentDate,
+        amount: payment.amount,
+        fine_paid: payment.finePaid,
+        renewal_paid: payment.renewalPaid,
+      })
+      .select()
+      .single();
+
+    if (!withoutInterestPaidInsert.error) {
+      data = withoutInterestPaidInsert.data;
+      error = null;
+    }
+  }
+
+  if (error && isMissingPaymentBreakdownColumnError(error)) {
+    if (payment.interestPaid > 0) {
+      throw new Error(getSupabaseErrorMessage(error));
+    }
+
     const legacyInsert = await supabase
       .from("loan_payments")
       .insert({
@@ -736,6 +810,7 @@ export async function createLoanPayment(payment: LoanPayment) {
     paymentDate: data.payment_date,
     amount: Number(data.amount),
     finePaid: payment.finePaid,
+    interestPaid: payment.interestPaid,
     renewalPaid: payment.renewalPaid,
   } satisfies LoanPayment;
 }

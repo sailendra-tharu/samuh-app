@@ -30,18 +30,54 @@ const getMonthOptions = (year: number) =>
 const getYearOptions = (currentYear: number) =>
   Array.from({ length: 10 }, (_, index) => currentYear - index);
 
+const formatLocalDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
+const getNextMonthDate = (dateString: string) => {
+  const currentDate = new NepaliDate(new Date(dateString));
+  const nextMonth = new NepaliDate(
+    currentDate.getYear(),
+    currentDate.getMonth(),
+    1
+  );
+
+  nextMonth.setMonth(currentDate.getMonth() + 1);
+
+  return formatLocalDate(nextMonth.toJsDate());
+};
+
+const createNextMonthSaving = (saving: Saving): Saving => ({
+  ...saving,
+  id: undefined,
+  date: getNextMonthDate(saving.date),
+  description: "",
+  newMember: "",
+  fineIn:
+    saving.fineIn === null
+      ? null
+      : Math.max(0, saving.fineIn - (saving.fineOut ?? 0)),
+  fineOut: 0,
+  paymentReceived: null,
+});
+
 function Savings() {
   const navigate = useNavigate();
   const currentBS = NepaliDate.now();
   const currentYear = currentBS.getYear();
-  const [selectedYear, setSelectedYear] = useState(currentYear);
-  const [selectedMonth, setSelectedMonth] = useState(currentBS.getMonth());
+  const [selectedYear, setSelectedYear] = useState<number | null>(currentYear);
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [saveError, setSaveError] = useState("");
+  const [nextMonthSaving, setNextMonthSaving] = useState<Saving | null>(null);
 
   const {
     savings,
@@ -56,21 +92,32 @@ function Savings() {
     isLoading: isSearching,
   } = useSearchSavings(search);
 
-  const monthOptions = getMonthOptions(selectedYear);
+  const monthOptions = getMonthOptions(selectedYear ?? currentYear);
   const yearOptions = getYearOptions(currentYear);
-  const selectedMonthKey = monthOptions[selectedMonth]?.key;
+  const selectedMonthKey =
+    selectedYear !== null && selectedMonth !== null
+      ? monthOptions[selectedMonth]?.key
+      : undefined;
   const savingsForSelectedSearch = search.trim() ? searchedSavings : savings;
-  const displaySavings = selectedMonthKey
-    ? savingsForSelectedSearch.filter(
-        (saving) => getBSMonthKey(saving.date) === selectedMonthKey
-      )
+  const displaySavings = selectedYear !== null
+    ? savingsForSelectedSearch.filter((saving) => {
+        const nepaliDate = new NepaliDate(new Date(saving.date));
+
+        return (
+          nepaliDate.format("YYYY") === String(selectedYear) &&
+          (selectedMonthKey === undefined ||
+            getBSMonthKey(saving.date) === selectedMonthKey)
+        );
+      })
     : [];
 
   const exportSavings = () => {
-    if (!selectedMonthKey || displaySavings.length === 0) return;
+    if (selectedYear === null || displaySavings.length === 0) return;
+
+    const periodLabel = selectedMonthKey ?? `${selectedYear} - All Months`;
 
     printPdf(
-      `Savings - ${selectedMonthKey}`,
+      `Savings - ${periodLabel}`,
       [
         "Name",
         "Group Name",
@@ -96,6 +143,10 @@ function Savings() {
 
   const saveSaving = async (saving: Saving) => {
     setSaveError("");
+    const isAddingNextMonth = nextMonthSaving !== null;
+    const nextMonthDate = isAddingNextMonth
+      ? new NepaliDate(new Date(saving.date))
+      : null;
 
     try {
       if (editingIndex !== null) {
@@ -105,7 +156,13 @@ function Savings() {
       }
 
       setOpen(false);
+      setNextMonthSaving(null);
       setEditingIndex(null);
+
+      if (nextMonthDate) {
+        setSelectedYear(nextMonthDate.getYear());
+        setSelectedMonth(nextMonthDate.getMonth());
+      }
     } catch (error) {
       const message =
         error instanceof Error
@@ -119,9 +176,21 @@ function Savings() {
   };
 
   const editSaving = (index: number) => {
+    setNextMonthSaving(null);
     setEditingIndex(index);
     setSaveError("");
     setOpen(true);
+  };
+
+  const addNextMonthSaving = (index: number) => {
+    const saving = displaySavings[index];
+
+    if (!saving) return;
+
+    setNextMonthSaving(createNextMonthSaving(saving));
+    setEditingIndex(null);
+    setSaveError("");
+    setOpen(false);
   };
 
   const handleDeleteClick = (index: number) => {
@@ -144,6 +213,7 @@ function Savings() {
 
   const closeForm = () => {
     setOpen(false);
+    setNextMonthSaving(null);
     setEditingIndex(null);
     setSaveError("");
   };
@@ -164,19 +234,29 @@ function Savings() {
 
         <div className="flex w-full gap-2 sm:w-auto">
           <select
-            value={selectedYear}
-            onChange={(event) => setSelectedYear(Number(event.target.value))}
+            value={selectedYear ?? ""}
+            onChange={(event) => {
+              const value = event.target.value;
+              setSelectedYear(value ? Number(value) : null);
+              setSelectedMonth(null);
+            }}
             className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 sm:w-28 sm:flex-none"
             aria-label="Savings year"
           >
+            <option value="">Select year</option>
             {yearOptions.map((year) => <option key={year} value={year}>{year}</option>)}
           </select>
           <select
-            value={selectedMonth}
-            onChange={(event) => setSelectedMonth(Number(event.target.value))}
+            value={selectedMonth ?? ""}
+            onChange={(event) => {
+              const value = event.target.value;
+              setSelectedMonth(value ? Number(value) : null);
+            }}
+            disabled={selectedYear === null}
             className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 sm:w-36 sm:flex-none"
             aria-label="Savings month"
           >
+            <option value="">Select month</option>
             {monthOptions.map((month) => (
               <option key={month.key} value={month.value}>{month.label}</option>
             ))}
@@ -186,6 +266,7 @@ function Savings() {
         <button
           type="button"
           onClick={() => {
+            setNextMonthSaving(null);
             setEditingIndex(null);
             setSaveError("");
             setOpen(true);
@@ -207,7 +288,11 @@ function Savings() {
       </div>
 
       <DataTable
-        columns={userColumns(editSaving, handleDeleteClick)}
+        columns={userColumns(
+          editSaving,
+          handleDeleteClick,
+          addNextMonthSaving
+        )}
         data={displaySavings}
         isLoading={search.trim() ? isSearching : isLoading}
         loader={<Loader />}
@@ -219,9 +304,15 @@ function Savings() {
       />
 
       <Modal
-        isOpen={open}
+        isOpen={open || nextMonthSaving !== null}
         onClose={closeForm}
-        title={editingIndex !== null ? "Edit Saving" : "Add Saving"}
+        title={
+          nextMonthSaving
+            ? "Add Next Month Saving"
+            : editingIndex !== null
+              ? "Edit Saving"
+              : "Add Saving"
+        }
         bodyClassName="max-h-[80vh]"
         bodyScrollable
       >
@@ -229,10 +320,12 @@ function Savings() {
           onSubmit={saveSaving}
           onCancel={closeForm}
           initialData={
-            editingIndex !== null
+            nextMonthSaving ??
+              (editingIndex !== null
               ? displaySavings[editingIndex]
-              : undefined
+              : undefined)
           }
+          variant={nextMonthSaving ? "next-month" : "default"}
           error={saveError}
         />
       </Modal>

@@ -1,5 +1,5 @@
 import { createColumnHelper } from "@tanstack/react-table";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import NepaliDate from "nepali-date-converter";
 
 import type { Saving } from "@/api/saving";
@@ -26,7 +26,8 @@ const helper = createColumnHelper<Saving>();
 
 export const userColumns = (
   onEdit: (index: number) => void,
-  onDelete: (index: number) => void
+  onDelete: (index: number) => void,
+  onAddNextSaving: (index: number) => void
 ) => [
   helper.display({
     id: "sn",
@@ -80,6 +81,18 @@ export const userColumns = (
     size: 1,
     cell: ({ row }) => (
       <div className="flex items-center gap-2">
+        <button
+          type="button"
+          className="rounded-md p-2 text-green-600 hover:bg-green-100"
+          onClick={(event) => {
+            event.stopPropagation();
+            onAddNextSaving(row.index);
+          }}
+          title="Add next month saving"
+        >
+          <Plus size={18} />
+        </button>
+
         <button
           type="button"
           className="rounded-md p-2 text-blue-600 hover:bg-blue-100"

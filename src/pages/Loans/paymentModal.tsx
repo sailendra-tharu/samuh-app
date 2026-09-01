@@ -14,6 +14,7 @@ export type LoanPaymentDraft = {
   paymentDate: LoanPayment["paymentDate"];
   amount: LoanPayment["amount"] | null;
   finePaid: LoanPayment["finePaid"] | null;
+  interestPaid: LoanPayment["interestPaid"] | null;
   renewalPaid: LoanPayment["renewalPaid"] | null;
 };
 
@@ -61,6 +62,7 @@ const createEmptyForm = (loan: Loan): LoanPaymentDraft => ({
   paymentDate: formatLocalDate(new Date()),
   amount: loan.emi,
   finePaid: 0,
+  interestPaid: loan.interest ?? 0,
   renewalPaid: 0,
 });
 
@@ -216,6 +218,18 @@ export default function PaymentForm({
         />
         <p className="mt-1 text-xs text-gray-500">
           This amount is added to Fine Out after the payment is saved.
+        </p>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-sm font-medium text-gray-700">
+          Interest
+        </label>
+        <div className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-900">
+          {(loan.interest ?? 0).toLocaleString()}
+        </div>
+        <p className="mt-1 text-xs text-gray-500">
+          Automatically populated from the loan Interest value and recorded when this payment is saved.
         </p>
       </div>
 

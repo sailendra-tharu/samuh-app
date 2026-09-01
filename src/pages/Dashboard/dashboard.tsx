@@ -132,8 +132,10 @@ const getActivityItems = (savings: Saving[], loans: Loan[]) => {
 
 function Dashboard() {
   const navigate = useNavigate();
-  const [selectedMonth, setSelectedMonth] = useState(() => NepaliDate.now().getMonth());
-  const [selectedYear, setSelectedYear] = useState(() => NepaliDate.now().getYear());
+  const currentYear = NepaliDate.now().getYear();
+  const currentMonth = NepaliDate.now().getMonth();
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(currentMonth);
+  const [selectedYear, setSelectedYear] = useState<number | null>(currentYear);
   const { members, isLoading: membersLoading } = useMembers();
   const { savings, isLoading: savingsLoading } = useSavings();
   const { loans, isLoading: loansLoading, error: loansError } = useLoans();
@@ -164,19 +166,25 @@ function Dashboard() {
   const collectionRate = totalLoanPrincipal
     ? Math.min(100, Math.round((paidPrincipal / totalLoanPrincipal) * 100))
     : 0;
-  const monthData = getLastSixMonths(selectedYear, selectedMonth).map((month) => ({
-    ...month,
-    total: savings.reduce((total, saving) => {
-      return getBSMonthKey(saving.date) === month.key
-        ? total + (saving.paymentReceived ?? 0)
-        : total;
-    }, 0),
-  }));
+  const monthData =
+    selectedYear !== null && selectedMonth !== null
+      ? getLastSixMonths(selectedYear, selectedMonth).map((month) => ({
+          ...month,
+          total: savings.reduce((total, saving) => {
+            return getBSMonthKey(saving.date) === month.key
+              ? total + (saving.paymentReceived ?? 0)
+              : total;
+          }, 0),
+        }))
+      : [];
   const maxMonthTotal = Math.max(...monthData.map((month) => month.total), 1);
   const selectedMonthTotal = monthData[monthData.length - 1]?.total ?? 0;
   const currentBS = NepaliDate.now();
   const isCurrentPeriod =
-    selectedMonth === currentBS.getMonth() && selectedYear === currentBS.getYear();
+    selectedMonth !== null &&
+    selectedYear !== null &&
+    selectedMonth === currentBS.getMonth() &&
+    selectedYear === currentBS.getYear();
   const availableYears = Array.from(
     new Set([
       currentBS.getYear(),
@@ -332,10 +340,15 @@ function Dashboard() {
                 <label className="sr-only" htmlFor="savings-month-filter">Savings month</label>
                 <select
                   id="savings-month-filter"
-                  value={selectedMonth}
-                  onChange={(event) => setSelectedMonth(Number(event.target.value))}
+                  value={selectedMonth ?? ""}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setSelectedMonth(value ? Number(value) : null);
+                  }}
+                  disabled={selectedYear === null}
                   className="cursor-pointer bg-transparent text-xs font-medium text-slate-700 outline-none"
                 >
+                  <option value="">Select month</option>
                   {monthOptions.map((month) => (
                     <option key={month.value} value={month.value}>{month.label}</option>
                   ))}
@@ -343,10 +356,15 @@ function Dashboard() {
                 <label className="sr-only" htmlFor="savings-year-filter">Savings year</label>
                 <select
                   id="savings-year-filter"
-                  value={selectedYear}
-                  onChange={(event) => setSelectedYear(Number(event.target.value))}
+                  value={selectedYear ?? ""}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setSelectedYear(value ? Number(value) : null);
+                    setSelectedMonth(null);
+                  }}
                   className="cursor-pointer bg-transparent text-xs font-medium text-slate-700 outline-none"
                 >
+                  <option value="">Select year</option>
                   {availableYears.map((year) => (
                     <option key={year} value={year}>{year}</option>
                   ))}
@@ -357,14 +375,22 @@ function Dashboard() {
                   {isCurrentPeriod ? "This month" : "Selected month"}
                 </p>
                 <p className="mt-0.5 text-sm font-semibold text-[#07583e]">
-                  {isLoading ? "—" : formatCurrency(selectedMonthTotal)}
+                  {selectedMonth === null || selectedYear === null
+                    ? "Select period"
+                    : isLoading
+                      ? "—"
+                      : formatCurrency(selectedMonthTotal)}
                 </p>
               </div>
             </div>
           </div>
 
           <div className="mt-8 flex h-52 items-end gap-2 sm:gap-4">
-            {monthData.map((month, index) => {
+            {monthData.length === 0 ? (
+              <div className="grid h-full w-full place-items-center rounded-lg border border-dashed border-slate-200 text-sm text-slate-400">
+                Select a year and month to view savings.
+              </div>
+            ) : monthData.map((month, index) => {
               const height = month.total
                 ? Math.max(12, Math.round((month.total / maxMonthTotal) * 100))
                 : 5;

@@ -5,6 +5,7 @@ import {
   Wallet,
   HandCoins,
   ChartNoAxesCombined,
+  TrendingUp,
   LogOut,
   X,
 } from "lucide-react";
@@ -30,6 +31,11 @@ const menuItems = [
     name: "Loans",
     icon: HandCoins,
     path: "/loans",
+  },
+  {
+    name: "Investment",
+    icon: TrendingUp,
+    path: "/investment",
   },
   {
     name: "Profit & Loss",

@@ -62,6 +62,7 @@ const createEmptyForm = (): Loan => ({
   fineIn: null,
   fineOut: 0,
   interest: null,
+  interestPaid: 0,
   emi: null,
   renewalPaid: 0,
   paidAmount: 0,

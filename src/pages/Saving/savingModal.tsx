@@ -10,6 +10,7 @@ type SavingFormProps = {
   onSubmit: (saving: Saving) => void | Promise<void>;
   onCancel: () => void;
   error?: string;
+  variant?: "default" | "next-month";
 };
 
 const formatLocalDate = (date: Date) => {
@@ -62,6 +63,7 @@ export default function SavingForm({
   onSubmit,
   onCancel,
   error,
+  variant = "default",
 }: SavingFormProps) {
   const [form, setForm] = useState<Saving>(createEmptyForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -139,6 +141,7 @@ export default function SavingForm({
           name="name"
           value={form.name}
           onChange={handleChange}
+          readOnly={variant === "next-month"}
           placeholder="Enter member name"
           list="registered-member-names"
           className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
@@ -151,73 +154,106 @@ export default function SavingForm({
         </datalist>
       </div>
 
-      <div>
-        <label className="mb-1 block text-sm font-medium text-gray-700">
-          Description
-        </label>
-        <input
-          name="description"
-          value={form.description}
-          onChange={handleChange}
-          placeholder="Enter description"
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-        />
-      </div>
+      {variant === "next-month" ? (
+        <>
+          <div className="rounded-lg border border-green-100 bg-green-50 px-4 py-3">
+            <p className="text-sm font-medium text-green-800">Next saving month</p>
+            <p className="mt-1 text-sm text-green-700">
+              {toBSDate(form.date) || "—"}
+            </p>
+            {form.fineIn !== null && (
+              <p className="mt-1 text-xs text-green-700">
+                Fine available: {form.fineIn.toLocaleString()}
+              </p>
+            )}
+          </div>
 
-      <div className="grid gap-5 sm:grid-cols-2">
-        <TextField
-          label="Group Name"
-          name="groupName"
-          value={form.groupName}
-          onChange={handleChange}
-          placeholder="Enter group name"
-        />
-        <TextField
-          label="New Member"
-          name="newMember"
-          value={form.newMember}
-          onChange={handleChange}
-          placeholder="Enter new member"
-        />
-      </div>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <NumberField
+              label="Saving Amount"
+              name="paymentReceived"
+              value={form.paymentReceived}
+              onChange={handleChange}
+            />
+            <NumberField
+              label="Fine Out"
+              name="fineOut"
+              value={form.fineOut}
+              onChange={handleChange}
+            />
+          </div>
+        </>
+      ) : (
+        <>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Description
+            </label>
+            <input
+              name="description"
+              value={form.description}
+              onChange={handleChange}
+              placeholder="Enter description"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+            />
+          </div>
 
-      <div className="grid gap-5 sm:grid-cols-3">
-        <NumberField
-          label="Fine In"
-          name="fineIn"
-          value={form.fineIn}
-          onChange={handleChange}
-        />
-        <NumberField
-          label="Fine Out"
-          name="fineOut"
-          value={form.fineOut}
-          onChange={handleChange}
-        />
-        <NumberField
-          label="Payment Received"
-          name="paymentReceived"
-          value={form.paymentReceived}
-          onChange={handleChange}
-        />
-      </div>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <TextField
+              label="Group Name"
+              name="groupName"
+              value={form.groupName}
+              onChange={handleChange}
+              placeholder="Enter group name"
+            />
+            <TextField
+              label="New Member"
+              name="newMember"
+              value={form.newMember}
+              onChange={handleChange}
+              placeholder="Enter new member"
+            />
+          </div>
 
-       <div>
-        <label className="mb-1 block text-sm font-medium text-gray-700">
-          Date (B.S.)
-        </label>
-        <DatePicker
-          value={toBSDate(form.date)}
-          onChange={(bsDate) =>
-            setForm((previous) => ({
-              ...previous,
-              date: toADDate(bsDate),
-            }))
-          }
-          label=""
-          placeholder="Select date"
-        />
-      </div>
+          <div className="grid gap-5 sm:grid-cols-3">
+            <NumberField
+              label="Fine In"
+              name="fineIn"
+              value={form.fineIn}
+              onChange={handleChange}
+            />
+            <NumberField
+              label="Fine Out"
+              name="fineOut"
+              value={form.fineOut}
+              onChange={handleChange}
+            />
+            <NumberField
+              label="Payment Received"
+              name="paymentReceived"
+              value={form.paymentReceived}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Date (B.S.)
+            </label>
+            <DatePicker
+              value={toBSDate(form.date)}
+              onChange={(bsDate) =>
+                setForm((previous) => ({
+                  ...previous,
+                  date: toADDate(bsDate),
+                }))
+              }
+              label=""
+              placeholder="Select date"
+            />
+          </div>
+        </>
+      )}
 
       {error && (
         <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
@@ -241,7 +277,9 @@ export default function SavingForm({
         >
           {isSubmitting
             ? "Saving..."
-            : initialData
+            : variant === "next-month"
+              ? "Save Monthly Saving"
+              : initialData
               ? "Update Saving"
               : "Save Saving"}
         </button>

@@ -47,8 +47,8 @@ function Loans() {
   const navigate = useNavigate();
   const currentBS = NepaliDate.now();
   const currentYear = currentBS.getYear();
-  const [selectedYear, setSelectedYear] = useState(currentYear);
-  const [selectedMonth, setSelectedMonth] = useState(currentBS.getMonth());
+  const [selectedYear, setSelectedYear] = useState<number | null>(currentYear);
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -72,22 +72,33 @@ function Loans() {
     isLoading: isSearching,
     error: searchError,
   } = useSearchLoans(search);
-  const monthOptions = getMonthOptions(selectedYear);
+  const monthOptions = getMonthOptions(selectedYear ?? currentYear);
   const yearOptions = getYearOptions(currentYear);
-  const selectedMonthKey = monthOptions[selectedMonth]?.key;
+  const selectedMonthKey =
+    selectedYear !== null && selectedMonth !== null
+      ? monthOptions[selectedMonth]?.key
+      : undefined;
   const loansForSelectedSearch = search.trim() ? searchedLoans : loans;
-  const displayLoans = selectedMonthKey
-    ? loansForSelectedSearch.filter(
-        (loan) => getBSMonthKey(loan.loanDate) === selectedMonthKey
-      )
+  const displayLoans = selectedYear !== null
+    ? loansForSelectedSearch.filter((loan) => {
+        const nepaliDate = new NepaliDate(new Date(loan.loanDate));
+
+        return (
+          nepaliDate.format("YYYY") === String(selectedYear) &&
+          (selectedMonthKey === undefined ||
+            getBSMonthKey(loan.loanDate) === selectedMonthKey)
+        );
+      })
     : [];
   const loadError = search.trim() ? searchError : loansError;
 
   const exportLoans = () => {
-    if (!selectedMonthKey || displayLoans.length === 0) return;
+    if (selectedYear === null || displayLoans.length === 0) return;
+
+    const periodLabel = selectedMonthKey ?? `${selectedYear} - All Months`;
 
     printPdf(
-      `Loans - ${selectedMonthKey}`,
+      `Loans - ${periodLabel}`,
       [
         "Name",
         "Loan Date",
@@ -180,6 +191,7 @@ function Loans() {
         paymentDate: payment.paymentDate,
         amount: payment.amount ?? 0,
         finePaid: payment.finePaid ?? 0,
+        interestPaid: payment.interestPaid ?? 0,
         renewalPaid: payment.renewalPaid ?? 0,
       });
       setPaymentLoan(null);
@@ -226,19 +238,29 @@ function Loans() {
 
         <div className="flex w-full gap-2 sm:w-auto">
           <select
-            value={selectedYear}
-            onChange={(event) => setSelectedYear(Number(event.target.value))}
+            value={selectedYear ?? ""}
+            onChange={(event) => {
+              const value = event.target.value;
+              setSelectedYear(value ? Number(value) : null);
+              setSelectedMonth(null);
+            }}
             className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 sm:w-28 sm:flex-none"
             aria-label="Loans year"
           >
+            <option value="">Select year</option>
             {yearOptions.map((year) => <option key={year} value={year}>{year}</option>)}
           </select>
           <select
-            value={selectedMonth}
-            onChange={(event) => setSelectedMonth(Number(event.target.value))}
+            value={selectedMonth ?? ""}
+            onChange={(event) => {
+              const value = event.target.value;
+              setSelectedMonth(value ? Number(value) : null);
+            }}
+            disabled={selectedYear === null}
             className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 sm:w-36 sm:flex-none"
             aria-label="Loans month"
           >
+            <option value="">Select month</option>
             {monthOptions.map((month) => (
               <option key={month.key} value={month.value}>{month.label}</option>
             ))}
