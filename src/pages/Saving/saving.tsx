@@ -77,6 +77,7 @@ function Savings() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [saveError, setSaveError] = useState("");
+  const [deleteError, setDeleteError] = useState("");
   const [nextMonthSaving, setNextMonthSaving] = useState<Saving | null>(null);
 
   const {
@@ -85,6 +86,7 @@ function Savings() {
     createSaving,
     updateSaving,
     deleteSaving,
+    isDeleting,
   } = useSavings();
 
   const {
@@ -224,17 +226,25 @@ function Savings() {
 
     if (saving?.id === undefined) return;
 
+    setDeleteError("");
     setDeleteId(saving.id);
     setOpenDelete(true);
   };
 
-  const confirmDelete = () => {
-    if (deleteId !== null) {
-      deleteSaving(deleteId);
-    }
+  const confirmDelete = async () => {
+    if (deleteId === null) return;
 
-    setOpenDelete(false);
-    setDeleteId(null);
+    try {
+      await deleteSaving(deleteId);
+      setOpenDelete(false);
+      setDeleteId(null);
+    } catch (error) {
+      setDeleteError(
+        error instanceof Error
+          ? error.message
+          : "Unable to delete saving. Please try again."
+      );
+    }
   };
 
   const closeForm = () => {
@@ -246,6 +256,12 @@ function Savings() {
 
   return (
     <>
+      {deleteError && (
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {deleteError}
+        </div>
+      )}
+
       <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-end">
         <div className="relative w-full sm:w-72">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
@@ -360,8 +376,14 @@ function Savings() {
         open={openDelete}
         title="Delete Saving"
         message="Are you sure you want to delete this saving?"
-        onClose={() => setOpenDelete(false)}
-        onConfirm={confirmDelete}
+        onClose={() => {
+          setOpenDelete(false);
+          setDeleteError("");
+        }}
+        onConfirm={() => {
+          void confirmDelete();
+        }}
+        isLoading={isDeleting}
       />
     </>
   );

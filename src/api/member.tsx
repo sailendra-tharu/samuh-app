@@ -91,25 +91,50 @@ export async function updateMember(member: Member) {
 }
 
 
-// Delete member and associated savings
+// Delete a member without deleting historical savings.
 export async function deleteMember(id: number) {
-  // First delete associated savings to avoid foreign key constraints
+  // Loans are retained as history and currently require their member.
+  // Refuse the deletion rather than relying on unknown FK cascade behavior.
+  const { data: linkedLoans, error: loansError } = await supabase
+    .from("loans")
+    .select("id")
+    .eq("member_id", id)
+    .limit(1);
+
+  if (loansError) {
+    throw loansError;
+  }
+
+  if (linkedLoans.length > 0) {
+    throw new Error(
+      "This member cannot be deleted while loan history is linked to them."
+    );
+  }
+
+  // Keep savings history by detaching it from the member before deletion.
+  // member_id is nullable because legacy name-only savings are supported.
   const { error: savingsError } = await supabase
     .from("saving")
-    .delete()
+    .update({ member_id: null })
     .eq("member_id", id);
 
   if (savingsError) {
     throw savingsError;
   }
 
-  const { error: memberError } = await supabase
+  const { data: deletedMember, error: memberError } = await supabase
     .from("members")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
 
   if (memberError) {
     throw memberError;
+  }
+
+  if (!deletedMember) {
+    throw new Error("The selected member no longer exists.");
   }
 }
 

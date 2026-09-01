@@ -33,6 +33,7 @@ function Member() {
     const [search, setSearch] = useState("");
 
     const [saveError, setSaveError] = useState("");
+    const [deleteError, setDeleteError] = useState("");
 
 
 
@@ -43,6 +44,7 @@ function Member() {
         createMember,
         updateMember,
         deleteMember,
+        isDeleting,
     } = useMembers();
 
 
@@ -122,6 +124,7 @@ function Member() {
         const member = displayMembers[index];
 
 
+        setDeleteError("");
         setDeleteId(member.id);
 
 
@@ -136,22 +139,20 @@ function Member() {
 
 
 
-    const confirmDelete = () => {
+    const confirmDelete = async () => {
+        if (deleteId === null) return;
 
-
-        if (deleteId !== null) {
-
-
-            deleteMember(deleteId);
-
+        try {
+            await deleteMember(deleteId);
+            setOpenDelete(false);
+            setDeleteId(null);
+        } catch (error) {
+            setDeleteError(
+                error instanceof Error
+                    ? error.message
+                    : "Unable to delete member. Please try again."
+            );
         }
-
-
-        setOpenDelete(false);
-
-
-        setDeleteId(null);
-
     };
 
 
@@ -165,6 +166,11 @@ function Member() {
     return (
 
         <>
+            {deleteError && (
+                <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {deleteError}
+                </div>
+            )}
 
 
             {/* Search + Add Button */}
@@ -431,11 +437,15 @@ function Member() {
                 onClose={() => {
 
                     setOpenDelete(false);
+                    setDeleteError("");
 
                 }}
 
 
-                onConfirm={confirmDelete}
+                onConfirm={() => {
+                    void confirmDelete();
+                }}
+                isLoading={isDeleting}
 
 
             />

@@ -55,6 +55,7 @@ function Loans() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [saveError, setSaveError] = useState("");
+  const [deleteError, setDeleteError] = useState("");
   const [paymentLoan, setPaymentLoan] = useState<Loan | null>(null);
   const [paymentError, setPaymentError] = useState("");
 
@@ -66,6 +67,7 @@ function Loans() {
     deleteLoan,
     createLoanPayment,
     error: loansError,
+    isDeleting,
   } = useLoans();
   const {
     loans: searchedLoans,
@@ -167,6 +169,7 @@ function Loans() {
 
     if (loan?.id === undefined) return;
 
+    setDeleteError("");
     setDeleteId(loan.id);
     setOpenDelete(true);
   };
@@ -208,12 +211,15 @@ function Loans() {
   };
 
   const confirmDelete = async () => {
-    if (deleteId !== null) {
-      await deleteLoan(deleteId);
-    }
+    if (deleteId === null) return;
 
-    setOpenDelete(false);
-    setDeleteId(null);
+    try {
+      await deleteLoan(deleteId);
+      setOpenDelete(false);
+      setDeleteId(null);
+    } catch (error) {
+      setDeleteError(getErrorMessage(error, "Unable to delete loan. Please try again."));
+    }
   };
 
   const closeForm = () => {
@@ -290,6 +296,12 @@ function Loans() {
         </button>
       </div>
 
+      {deleteError && (
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {deleteError}
+        </div>
+      )}
+
       {loadError ? (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-6 text-center text-sm text-red-700">
           Unable to load loans: {loadError.message}
@@ -360,6 +372,7 @@ function Loans() {
         onConfirm={() => {
           void confirmDelete();
         }}
+        isLoading={isDeleting}
       />
     </>
   );

@@ -66,6 +66,9 @@ export function useMembers() {
       queryClient.invalidateQueries({
         queryKey: ["members"],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["savings"],
+      });
     },
 
     onError: (error) => {
@@ -83,7 +86,8 @@ export function useMembers() {
 
     updateMember: updateMutation.mutateAsync,
 
-    deleteMember: deleteMutation.mutate,
+    deleteMember: deleteMutation.mutateAsync,
+    isDeleting: deleteMutation.isPending,
   };
 }
 

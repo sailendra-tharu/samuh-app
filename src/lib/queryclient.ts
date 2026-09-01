@@ -8,7 +8,9 @@ export const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
     },
     mutations: {
-      retry: 1,
+      // Retrying an INSERT after a lost response can create duplicate records.
+      // Users can retry explicitly after confirming whether the first request committed.
+      retry: false,
     },
   },
 });

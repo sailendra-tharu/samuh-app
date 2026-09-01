@@ -8,7 +8,11 @@ import {
   TrendingUp,
 } from "lucide-react";
 
-import type { Investment, InvestmentStatus } from "@/api/investment";
+import {
+  getInvestmentGainOrLoss,
+  type Investment,
+  type InvestmentStatus,
+} from "@/api/investment";
 import DataTable from "@/component/Table/datatable";
 import DeleteModal from "@/component/Modal/deleteModal";
 import Loader from "@/component/Loader/loader";
@@ -41,11 +45,6 @@ const getErrorMessage = (error: unknown, fallback: string) => {
 const getCurrentValue = (investment: Investment) =>
   investment.currentValue ?? 0;
 
-const getGainOrLoss = (investment: Investment) =>
-  (investment.returnValue > 0
-    ? investment.returnValue
-    : getCurrentValue(investment)) - (investment.investedAmount ?? 0);
-
 function Investment() {
   const [open, setOpen] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
@@ -60,6 +59,7 @@ function Investment() {
   );
   const [saveError, setSaveError] = useState("");
   const [returnError, setReturnError] = useState("");
+  const [deleteError, setDeleteError] = useState("");
 
   const {
     investments,
@@ -68,6 +68,7 @@ function Investment() {
     createInvestment,
     updateInvestment,
     deleteInvestment,
+    isDeleting,
   } = useInvestments();
   const {
     investments: searchedInvestments,
@@ -122,7 +123,7 @@ function Investment() {
         investment.investedAmount ?? 0,
         getCurrentValue(investment),
         investment.returnValue,
-        getGainOrLoss(investment),
+        getInvestmentGainOrLoss(investment) ?? 0,
       ])
     );
   };
@@ -162,6 +163,7 @@ function Investment() {
 
     if (investment?.id === undefined) return;
 
+    setDeleteError("");
     setDeleteId(investment.id);
     setOpenDelete(true);
   };
@@ -199,12 +201,17 @@ function Investment() {
   };
 
   const confirmDelete = async () => {
-    if (deleteId !== null) {
-      await deleteInvestment(deleteId);
-    }
+    if (deleteId === null) return;
 
-    setOpenDelete(false);
-    setDeleteId(null);
+    try {
+      await deleteInvestment(deleteId);
+      setOpenDelete(false);
+      setDeleteId(null);
+    } catch (error) {
+      setDeleteError(
+        getErrorMessage(error, "Unable to delete investment. Please try again.")
+      );
+    }
   };
 
   const closeForm = () => {
@@ -272,6 +279,12 @@ function Investment() {
           </p>
         </div>
       </section>
+
+      {deleteError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {deleteError}
+        </div>
+      )}
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {statCards.map((stat) => {
@@ -420,10 +433,14 @@ function Investment() {
         open={openDelete}
         title="Delete Investment"
         message="Are you sure you want to delete this investment?"
-        onClose={() => setOpenDelete(false)}
+        onClose={() => {
+          setOpenDelete(false);
+          setDeleteError("");
+        }}
         onConfirm={() => {
           void confirmDelete();
         }}
+        isLoading={isDeleting}
       />
     </div>
   );

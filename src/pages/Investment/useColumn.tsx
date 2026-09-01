@@ -1,25 +1,15 @@
 import { createColumnHelper } from "@tanstack/react-table";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
-import type { Investment } from "@/api/investment";
+import {
+  getInvestmentGainOrLoss,
+  type Investment,
+} from "@/api/investment";
 
 export type { Investment } from "@/api/investment";
 
 const formatAmount = (amount: number | null) =>
   amount === null ? "—" : amount.toLocaleString();
-
-const getGainOrLoss = (investment: Investment) => {
-  if (investment.investedAmount === null) {
-    return null;
-  }
-
-  const value =
-    investment.returnValue > 0
-      ? investment.returnValue
-      : investment.currentValue;
-
-  return value === null ? null : value - investment.investedAmount;
-};
 
 const helper = createColumnHelper<Investment>();
 
@@ -62,7 +52,7 @@ export const userColumns = (
     id: "gainOrLoss",
     header: "Gain / Loss",
     cell: ({ row }) => {
-      const value = getGainOrLoss(row.original);
+      const value = getInvestmentGainOrLoss(row.original);
 
       return (
         <span

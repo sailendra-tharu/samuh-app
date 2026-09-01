@@ -66,6 +66,7 @@ export function useInvestments() {
     createInvestment: createMutation.mutateAsync,
     updateInvestment: updateMutation.mutateAsync,
     deleteInvestment: deleteMutation.mutateAsync,
+    isDeleting: deleteMutation.isPending,
   };
 }
 

@@ -4,12 +4,15 @@ import {
   Trash2,
   TrendingDown,
   TrendingUp,
+  Wallet,
 } from "lucide-react";
 import NepaliDate from "nepali-date-converter";
 
+import { getInvestmentGainOrLoss } from "@/api/investment";
 import type { Loan } from "@/api/loan";
 import type { LossEntry } from "@/api/loss";
 import type { Saving } from "@/api/saving";
+import DeleteModal from "@/component/Modal/deleteModal";
 import Pagination from "@/component/Pagination/pagination";
 import { useInvestments } from "@/hook/investment";
 import { useLossEntries } from "@/hook/loss";
@@ -31,12 +34,14 @@ type DetailRow = ProfitRow & {
 type MonthlySummary = {
   key: string;
   label: string;
+  totalSavings: number;
   fineIn: number;
   fineOut: number;
   newMember: number;
   renewal: number;
   interest: number;
   investmentReturn: number;
+  investmentGain: number;
   investmentLoss: number;
   profit: number;
   loss: number;
@@ -51,7 +56,8 @@ const getMonthlyDescription = (row: MonthlySummary) => {
   if (row.newMember > 0) profitSources.push("New Member");
   if (row.renewal > 0) profitSources.push("Renewal Paid");
   if (row.interest > 0) profitSources.push("Interest");
-  if (row.investmentLoss > 0) lossSources.push("Investment");
+  if (row.investmentGain > 0) profitSources.push("Investment Gain");
+  if (row.investmentLoss > 0) lossSources.push("Investment Loss");
   if (row.loss - row.investmentLoss > 0) lossSources.push("Other Loss");
 
   return {
@@ -127,6 +133,10 @@ const getSavingProfit = (savings: Saving[], selectedMonth: string) => {
   );
 
   return {
+    totalSavings: monthSavings.reduce(
+      (total, saving) => total + toAmount(saving.paymentReceived),
+      0
+    ),
     fineIn: monthSavings.reduce((total, saving) => total + toAmount(saving.fineIn), 0),
     fineOut: monthSavings.reduce((total, saving) => total + toAmount(saving.fineOut), 0),
     newMember: monthSavings.reduce((total, saving) => total + toAmount(saving.newMember), 0),
@@ -200,10 +210,11 @@ function ProfitLoss() {
   const currentYear = currentBS.getYear();
   const yearOptions = getYearOptions(currentYear);
   const [selectedYear, setSelectedYear] = useState<number | null>(currentYear);
-  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(currentBS.getMonth());
   const [amount, setAmount] = useState<string | null>(null);
   const [details, setDetails] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
+  const [deleteLossId, setDeleteLossId] = useState<number | null>(null);
   const [overviewPage, setOverviewPage] = useState(1);
   const [detailsPage, setDetailsPage] = useState(1);
   const pageSize = 10;
@@ -239,7 +250,27 @@ function ProfitLoss() {
     if (monthKey !== currentMonthKey) return 0;
 
     return investments.reduce(
-      (total, investment) => total + (investment.investedAmount ?? 0),
+      (total, investment) => {
+        const gainOrLoss = getInvestmentGainOrLoss(investment);
+
+        return gainOrLoss !== null && gainOrLoss < 0
+          ? total + Math.abs(gainOrLoss)
+          : total;
+      },
+      0
+    );
+  };
+  const getInvestmentGain = (monthKey: string) => {
+    if (monthKey !== currentMonthKey) return 0;
+
+    return investments.reduce(
+      (total, investment) => {
+        const gainOrLoss = getInvestmentGainOrLoss(investment);
+
+        return gainOrLoss !== null && gainOrLoss > 0
+          ? total + gainOrLoss
+          : total;
+      },
       0
     );
   };
@@ -255,13 +286,15 @@ function ProfitLoss() {
     const savingProfit = getSavingProfit(savings, monthKey);
     const loanProfit = getLoanProfit(loans, monthKey);
     const investmentReturn = getInvestmentReturn(monthKey);
+    const investmentGain = getInvestmentGain(monthKey);
     const investmentLoss = getInvestmentLoss(monthKey);
     const profit =
       savingProfit.fineOut +
       savingProfit.newMember +
       loanProfit.renewal +
       loanProfit.interest +
-      loanProfit.fineOut;
+      loanProfit.fineOut +
+      investmentGain;
     const loss = lossEntries
       .filter((entry) => getBSMonthKey(entry.lossDate) === monthKey)
       .reduce((total, entry) => total + entry.amount, 0) + investmentLoss;
@@ -270,12 +303,14 @@ function ProfitLoss() {
     return {
       key: monthKey,
       label: month?.label ?? monthKey,
+      totalSavings: savingProfit.totalSavings,
       fineIn: savingProfit.fineIn,
       fineOut: savingProfit.fineOut + loanProfit.fineOut,
       newMember: savingProfit.newMember,
       renewal: loanProfit.renewal,
       interest: loanProfit.interest,
       investmentReturn,
+      investmentGain,
       investmentLoss,
       profit,
       loss,
@@ -285,12 +320,14 @@ function ProfitLoss() {
   const emptySummary: MonthlySummary = {
     key: "",
     label: "",
+    totalSavings: 0,
     fineIn: 0,
     fineOut: 0,
     newMember: 0,
     renewal: 0,
     interest: 0,
     investmentReturn: 0,
+    investmentGain: 0,
     investmentLoss: 0,
     profit: 0,
     loss: 0,
@@ -308,6 +345,10 @@ function ProfitLoss() {
     (total, row) => total + row.investmentReturn,
     0
   );
+  const annualInvestmentGain = annualRows.reduce(
+    (total, row) => total + row.investmentGain,
+    0
+  );
   const annualProfit = annualRows.reduce((total, row) => total + row.profit, 0);
   const annualLoss = annualRows.reduce((total, row) => total + row.loss, 0);
   const annualNet = annualProfit - annualLoss;
@@ -318,12 +359,14 @@ function ProfitLoss() {
       : {
           key: `${selectedYear}`,
           label: `${selectedYear}`,
+          totalSavings: annualRows.reduce((total, row) => total + row.totalSavings, 0),
           fineIn: annualRows.reduce((total, row) => total + row.fineIn, 0),
           fineOut: annualRows.reduce((total, row) => total + row.fineOut, 0),
           newMember: annualRows.reduce((total, row) => total + row.newMember, 0),
           renewal: annualRows.reduce((total, row) => total + row.renewal, 0),
           interest: annualRows.reduce((total, row) => total + row.interest, 0),
           investmentReturn: annualInvestmentReturn,
+          investmentGain: annualInvestmentGain,
           investmentLoss: annualInvestmentLoss,
           profit: annualProfit,
           loss: annualLoss,
@@ -354,19 +397,25 @@ function ProfitLoss() {
       amount: selectedSummary.renewal,
       details: "Automatically calculated from loan records",
     },
-    {
-      id: "interest",
-      category: "Interest",
-      amount: selectedSummary.interest,
-      details: "Interest amounts recorded in loan payments",
-    },
-  ]
+        {
+          id: "interest",
+          category: "Interest",
+          amount: selectedSummary.interest,
+          details: "Interest amounts recorded in loan payments",
+        },
+        {
+          id: "investment-gain",
+          category: "Investment Gain",
+          amount: selectedSummary.investmentGain,
+          details: "Positive Gain / Loss values from the investments table",
+        },
+      ]
     : [];
-  const monthlyLoss = selectedMonthKey
-    ? lossEntries.find(
+  const monthlyLosses = selectedMonthKey
+    ? lossEntries.filter(
         (entry) => getBSMonthKey(entry.lossDate) === selectedMonthKey
       )
-    : undefined;
+    : [];
   const detailRows: DetailRow[] = selectedMonthKey
     ? [
         ...profitRows.map((row) => ({ ...row, type: "Profit" as const })),
@@ -376,20 +425,16 @@ function ProfitLoss() {
           type: "Loss" as const,
           amount: selectedSummary.investmentLoss,
           details:
-            "Invested amounts from the investments table; assigned to the current B.S. month.",
+            "Negative Gain / Loss values from the investments table; assigned to the current B.S. month.",
         },
-        ...(monthlyLoss
-          ? [
-              {
-                id: `monthly-loss-${monthlyLoss.id ?? "entry"}`,
-                category: "Monthly Loss",
-                type: "Loss" as const,
-                amount: monthlyLoss.amount,
-                details: monthlyLoss.details || "—",
-                lossId: monthlyLoss.id,
-              },
-            ]
-          : []),
+        ...monthlyLosses.map((lossEntry, index) => ({
+          id: `monthly-loss-${lossEntry.id ?? index}`,
+          category: lossEntry.category || "Manual Loss",
+          type: "Loss" as const,
+          amount: lossEntry.amount,
+          details: lossEntry.details || "—",
+          lossId: lossEntry.id,
+        })),
       ]
     : [];
   const overviewPageCount = Math.max(1, Math.ceil(annualRows.length / pageSize));
@@ -410,21 +455,18 @@ function ProfitLoss() {
 
     if (!selectedMonthKey) return;
 
-    const amountValue = amount ?? (monthlyLoss ? String(monthlyLoss.amount) : "");
-    const lossDetails = details ?? monthlyLoss?.details ?? "";
+    const amountValue = amount ?? "";
+    const lossDetails = details ?? "";
     const parsedAmount = Number(amountValue);
 
     if (!amountValue.trim() || !Number.isFinite(parsedAmount) || parsedAmount < 0) return;
 
     setActionError("");
 
-    const existingLoss = monthlyLoss;
-
     try {
       await saveLoss({
-        id: existingLoss?.id,
         lossDate: getLossDateForMonth(selectedMonthKey),
-        category: "Monthly Loss",
+        category: "Manual Loss",
         amount: parsedAmount,
         details: lossDetails,
       } satisfies LossEntry);
@@ -442,8 +484,20 @@ function ProfitLoss() {
 
     try {
       await deleteLoss(id);
-    } catch {
+    } catch (error) {
       setActionError("Unable to delete the monthly loss. Please try again.");
+      throw error;
+    }
+  };
+
+  const confirmDeleteLoss = async () => {
+    if (deleteLossId === null) return;
+
+    try {
+      await deleteLossEntry(deleteLossId);
+      setDeleteLossId(null);
+    } catch {
+      // The delete error is displayed above the report.
     }
   };
 
@@ -506,6 +560,8 @@ function ProfitLoss() {
               const value = event.target.value;
               setSelectedYear(value ? Number(value) : null);
               setSelectedMonth(null);
+              setAmount(null);
+              setDetails(null);
               setOverviewPage(1);
               setDetailsPage(1);
             }}
@@ -520,6 +576,8 @@ function ProfitLoss() {
             onChange={(event) => {
               const value = event.target.value;
               setSelectedMonth(value ? Number(value) : null);
+              setAmount(null);
+              setDetails(null);
               setDetailsPage(1);
             }}
             disabled={selectedYear === null}
@@ -534,7 +592,18 @@ function ProfitLoss() {
         </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-3">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <article className="rounded-2xl border border-amber-100 bg-amber-50 p-5 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)]">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-medium text-amber-700">Total savings</p>
+            <Wallet className="h-5 w-5 text-amber-600" />
+          </div>
+          <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-amber-700">
+            {selectedYear === null ? "Select period" : isLoading ? "—" : formatCurrency(selectedSummary.totalSavings)}
+          </p>
+          <p className="mt-1 text-xs text-amber-700/70">Member contributions collected</p>
+        </article>
+
         <article className="rounded-2xl border border-emerald-100 bg-emerald-50 p-5 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)]">
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm font-medium text-emerald-700">profit</p>
@@ -565,8 +634,8 @@ function ProfitLoss() {
               रु
             </span>
           </div>
-          <p className={`mt-3 text-2xl font-semibold tracking-[-0.04em] ${selectedSummary.net >= 0 ? "text-[#087b55]" : "text-red-600"}`}>
-            {selectedYear === null ? "Select period" : reportLoading ? "—" : formatCurrency(selectedSummary.profit)}
+            <p className={`mt-3 text-2xl font-semibold tracking-[-0.04em] ${selectedSummary.net >= 0 ? "text-[#087b55]" : "text-red-600"}`}>
+            {selectedYear === null ? "Select period" : reportLoading ? "—" : formatCurrency(selectedSummary.net)}
           </p>
         </article>
       </section>
@@ -578,17 +647,19 @@ function ProfitLoss() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="min-w-[1140px] w-full text-left text-sm">
+          <table className="min-w-[1240px] w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-[0.08em] text-slate-500">
               <tr>
                 <th className="px-5 py-3 font-medium sm:px-6">Month</th>
                 <th className="min-w-[320px] px-5 py-3 font-medium">Description</th>
+                <th className="px-5 py-3 text-right font-medium">Total Savings</th>
                 <th className="px-5 py-3 text-right font-medium">Fine In</th>
                 <th className="px-5 py-3 text-right font-medium">Fine Out</th>
                 <th className="px-5 py-3 text-right font-medium">New Member</th>
                 <th className="px-5 py-3 text-right font-medium">Renewal</th>
                 <th className="px-5 py-3 text-right font-medium">Interest</th>
                 <th className="px-5 py-3 text-right font-medium">Returned</th>
+                <th className="px-5 py-3 text-right font-medium">Investment Gain</th>
                 <th className="px-5 py-3 text-right font-medium">Investment Loss</th>
                 <th className="px-5 py-3 text-right font-medium">Profit</th>
                 <th className="px-5 py-3 text-right font-medium">Loss</th>
@@ -598,7 +669,7 @@ function ProfitLoss() {
             <tbody className="divide-y divide-slate-100">
               {selectedYear === null && (
                 <tr>
-                  <td colSpan={11} className="px-5 py-8 text-center text-sm text-slate-500">
+                  <td colSpan={14} className="px-5 py-8 text-center text-sm text-slate-500">
                     Select a year and month to view the report.
                   </td>
                 </tr>
@@ -616,12 +687,14 @@ function ProfitLoss() {
                       </>
                     )}
                   </td>
+                  <td className="px-5 py-4 text-right font-semibold text-amber-700">{isLoading ? "—" : formatCurrency(row.totalSavings)}</td>
                   <td className="px-5 py-4 text-right text-slate-700">{isLoading ? "—" : formatCurrency(row.fineIn)}</td>
                   <td className="px-5 py-4 text-right text-slate-700">{isLoading ? "—" : formatCurrency(row.fineOut)}</td>
                   <td className="px-5 py-4 text-right text-slate-700">{isLoading ? "—" : formatCurrency(row.newMember)}</td>
                 <td className="px-5 py-4 text-right text-slate-700">{isLoading ? "—" : formatCurrency(row.renewal)}</td>
                   <td className="px-5 py-4 text-right text-slate-700">{isLoading ? "—" : formatCurrency(row.interest)}</td>
                   <td className="px-5 py-4 text-right font-semibold text-[#087b55]">{reportLoading ? "—" : formatCurrency(row.investmentReturn)}</td>
+                  <td className="px-5 py-4 text-right font-semibold text-[#087b55]">{reportLoading ? "—" : formatCurrency(row.investmentGain)}</td>
                   <td className="px-5 py-4 text-right font-semibold text-red-600">{reportLoading ? "—" : formatCurrency(row.investmentLoss)}</td>
                   <td className="px-5 py-4 text-right font-semibold text-[#087b55]">{isLoading ? "—" : formatCurrency(row.profit)}</td>
                   <td className="px-5 py-4 text-right font-semibold text-red-600">{reportLoading ? "—" : formatCurrency(row.loss)}</td>
@@ -645,13 +718,27 @@ function ProfitLoss() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)]">
-        <div className="border-b border-slate-100 px-5 py-5 sm:px-6">
-          <p className="text-base font-semibold text-slate-900">Add Loss</p>
-          <p className="mt-1 text-sm text-slate-500">Investments are already included automatically. Add only other losses here.</p>
+      <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)]">
+        <div className="flex items-start gap-4 border-b border-slate-100 px-5 py-5 sm:px-6">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-500">
+            <TrendingDown className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-base font-semibold text-slate-900">
+                Add Loss
+              </p>
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                {selectedMonthKey ? selectedMonthLabel : "Select a month"}
+              </span>
+            </div>
+            <p className="mt-1 text-sm leading-5 text-slate-500">
+              Record a manual loss for this month. Investment gains and losses are included automatically.
+            </p>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-[1fr_1.5fr_auto] lg:items-end">
+        <form onSubmit={handleSubmit} className="grid gap-4 p-5 sm:p-6 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)_auto] lg:items-end">
           <label className="block text-sm font-medium text-slate-700">
             Amount
             <input
@@ -659,11 +746,12 @@ function ProfitLoss() {
               min="0"
               step="1"
               name="amount"
-              value={amount ?? (monthlyLoss ? String(monthlyLoss.amount) : "")}
+              value={amount ?? ""}
               onChange={(event) => setAmount(event.target.value)}
               placeholder="Rs 0"
               required
-              className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-normal outline-none focus:border-[#087b55] focus:ring-2 focus:ring-[#b9e5d1]"
+              disabled={!selectedMonthKey}
+              className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-normal outline-none transition placeholder:text-slate-400 focus:border-[#087b55] focus:ring-2 focus:ring-[#b9e5d1] disabled:cursor-not-allowed disabled:bg-slate-50"
             />
           </label>
 
@@ -672,20 +760,21 @@ function ProfitLoss() {
             <input
               type="text"
               name="details"
-              value={details ?? monthlyLoss?.details ?? ""}
+              value={details ?? ""}
               onChange={(event) => setDetails(event.target.value)}
               placeholder="Optional note"
-              className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-normal outline-none focus:border-[#087b55] focus:ring-2 focus:ring-[#b9e5d1]"
+              disabled={!selectedMonthKey}
+              className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-normal outline-none transition placeholder:text-slate-400 focus:border-[#087b55] focus:ring-2 focus:ring-[#b9e5d1] disabled:cursor-not-allowed disabled:bg-slate-50"
             />
           </label>
 
           <button
             type="submit"
             disabled={isSaving || !selectedMonthKey}
-            className="flex items-center justify-center gap-2 rounded-lg bg-[#087b55] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#07583e] disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-[#087b55] px-5 text-sm font-semibold text-white transition hover:bg-[#07583e] disabled:cursor-not-allowed disabled:opacity-60 lg:min-w-36 lg:w-auto"
           >
             <Plus className="h-4 w-4" />
-            {isSaving ? "Saving..." : monthlyLoss ? "Update loss" : "Save loss"}
+            {isSaving ? "Saving..." : "Save loss"}
           </button>
         </form>
       </section>
@@ -729,7 +818,7 @@ function ProfitLoss() {
                     {row.lossId !== undefined ? (
                       <button
                         type="button"
-                        onClick={() => void deleteLossEntry(row.lossId as number)}
+                        onClick={() => setDeleteLossId(row.lossId as number)}
                         disabled={isDeleting}
                         className="rounded-lg p-2 text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                         aria-label="Delete monthly loss"
@@ -762,6 +851,17 @@ function ProfitLoss() {
           />
         </div>
       </section>
+
+      <DeleteModal
+        open={deleteLossId !== null}
+        title="Delete Loss"
+        message="Are you sure you want to delete this loss?"
+        onClose={() => setDeleteLossId(null)}
+        onConfirm={() => {
+          void confirmDeleteLoss();
+        }}
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

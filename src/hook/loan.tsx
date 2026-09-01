@@ -82,6 +82,7 @@ export function useLoans() {
     createLoanPayment: paymentMutation.mutateAsync,
     renewLoan: renewalMutation.mutateAsync,
     isRenewing: renewalMutation.isPending,
+    isDeleting: deleteMutation.isPending,
   };
 }
 

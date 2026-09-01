@@ -72,7 +72,8 @@ export function useSavings() {
     isLoading: savingsQuery.isLoading,
     createSaving: createMutation.mutateAsync,
     updateSaving: updateMutation.mutateAsync,
-    deleteSaving: deleteMutation.mutate,
+    deleteSaving: deleteMutation.mutateAsync,
+    isDeleting: deleteMutation.isPending,
     deleteAllMemberSavings: deleteAllMemberSavingsMutation.mutate,
   };
 }

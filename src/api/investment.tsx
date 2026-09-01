@@ -41,6 +41,17 @@ const toInvestment = (investment: RawInvestment): Investment => ({
   status: toStatus(investment.status),
 });
 
+export const getInvestmentGainOrLoss = (investment: Investment) => {
+  if (investment.investedAmount === null) return null;
+
+  const value =
+    investment.returnValue > 0
+      ? investment.returnValue
+      : investment.currentValue;
+
+  return value === null ? null : value - investment.investedAmount;
+};
+
 const validateInvestment = (investment: Investment) => {
   if (!investment.name.trim()) {
     throw new Error("Investment name is required.");

@@ -557,6 +557,18 @@ export async function renewLoan(loanId: number) {
     loan.loanTermYears
   );
 
+  const { data: existingRenewals, error: existingRenewalError } = await supabase
+    .from("loans")
+    .select("id")
+    .eq("renewed_from_loan_id", loan.id)
+    .limit(1);
+
+  if (existingRenewalError) throw existingRenewalError;
+
+  if (existingRenewals.length > 0) {
+    throw new Error("This loan already has a renewal record.");
+  }
+
   const { data: renewedLoan, error: renewalError } = await supabase
     .from("loans")
     .insert({
@@ -582,7 +594,30 @@ export async function renewLoan(loanId: number) {
     .update({ loan_status: "renewed" })
     .eq("id", loan.id);
 
-  if (markRenewedError) throw markRenewedError;
+  if (markRenewedError) {
+    // The insert has already committed. Verify the original row before
+    // compensating so a lost update response cannot delete a valid renewal.
+    const { data: latestOriginal, error: verifyError } = await supabase
+      .from("loans")
+      .select("loan_status")
+      .eq("id", loan.id)
+      .maybeSingle();
+
+    if (!verifyError && latestOriginal?.loan_status !== "renewed") {
+      const { error: rollbackError } = await supabase
+        .from("loans")
+        .delete()
+        .eq("id", renewedLoan.id);
+
+      if (rollbackError) {
+        throw new Error(
+          `The loan renewal could not be completed, and cleanup also failed: ${rollbackError.message}`
+        );
+      }
+    }
+
+    throw markRenewedError;
+  }
 
   return toLoan({ ...renewedLoan, loan_payments: [] });
 }

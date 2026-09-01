@@ -5,7 +5,8 @@ type DeleteModalProps = {
   title?: string;
   message?: string;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
+  isLoading?: boolean;
 };
 
 
@@ -15,6 +16,7 @@ function DeleteModal({
   message = "Are you sure you want to delete this article?",
   onClose,
   onConfirm,
+  isLoading = false,
 }: DeleteModalProps) {
 
 
@@ -113,7 +115,9 @@ function DeleteModal({
         >
 
           <button
+            type="button"
             onClick={onClose}
+            disabled={isLoading}
             className="
               flex-1
               rounded-md
@@ -123,6 +127,8 @@ function DeleteModal({
               font-medium
               text-gray-700
               hover:bg-gray-200
+              disabled:cursor-not-allowed
+              disabled:opacity-50
             "
           >
             Cancel
@@ -131,7 +137,11 @@ function DeleteModal({
 
 
           <button
-            onClick={onConfirm}
+            type="button"
+            onClick={() => {
+              void onConfirm();
+            }}
+            disabled={isLoading}
             className="
               flex-1
               rounded-md
@@ -142,9 +152,11 @@ function DeleteModal({
               text-white
               shadow-sm
               hover:bg-red-600
+              disabled:cursor-not-allowed
+              disabled:opacity-50
             "
           >
-            Delete
+            {isLoading ? "Deleting..." : "Delete"}
           </button>
 
 
