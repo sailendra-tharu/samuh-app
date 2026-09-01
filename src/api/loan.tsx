@@ -185,6 +185,16 @@ export const calculateRemainingFine = (
   return Math.max(0, assessedFine - paidFine);
 };
 
+export const calculateLoanStatus = (
+  storedStatus: string | null | undefined,
+  remainingPrincipal: number | null,
+  remainingFine: number
+): LoanStatus => {
+  if (storedStatus === "renewed") return "renewed";
+
+  return remainingPrincipal === 0 && remainingFine === 0 ? "paid" : "active";
+};
+
 export const calculateRemainingRenewalInterest = (
   remainingPrincipal: number | null,
   renewalPaid: number | null
@@ -253,12 +263,11 @@ const toLoan = (loan: RawLoan): Loan => {
     0
   );
   const remainingFine = calculateRemainingFine(fineIn, fineOut);
-  const status: LoanStatus =
-    loan.loan_status === "renewed"
-      ? "renewed"
-      : remainingPrincipal === 0 && remainingFine === 0
-        ? "paid"
-        : "active";
+  const status = calculateLoanStatus(
+    loan.loan_status,
+    remainingPrincipal,
+    remainingFine
+  );
 
   return {
     id: loan.id,
@@ -459,23 +468,32 @@ async function ensureMemberCanTakeLoan(memberId: number, currentLoanId?: number)
   }
 }
 
-const toLoanRow = (loan: Loan, memberId: number) => ({
+const toLoanRow = (loan: Loan, memberId: number) => {
   // Interest is based on the current balance, not the original principal.
   // paidAmount comes from the existing payment history when updating a loan.
-  interest: calculateLoanInterest(
-    calculateRemainingPrincipal(loan.principalAmount, loan.paidAmount)
-  ),
-  loan_status: loan.status,
-  renewed_from_loan_id: loan.renewedFromLoanId,
-  member_id: memberId,
-  loan_date: loan.loanDate,
-  loan_term_years: loan.loanTermYears,
-  description: loan.description || null,
-  principal_amount: loan.principalAmount,
-  fine_in: loan.fineIn,
-  fine_out: loan.fineOut ?? 0,
-  emi: calculateLoanEmi(loan.principalAmount, loan.loanTermYears) ?? loan.emi,
-});
+  const remainingPrincipal = calculateRemainingPrincipal(
+    loan.principalAmount,
+    loan.paidAmount
+  );
+
+  return {
+    interest: calculateLoanInterest(remainingPrincipal),
+    loan_status: calculateLoanStatus(
+      loan.status,
+      remainingPrincipal,
+      calculateRemainingFine(loan.fineIn, loan.fineOut)
+    ),
+    renewed_from_loan_id: loan.renewedFromLoanId,
+    member_id: memberId,
+    loan_date: loan.loanDate,
+    loan_term_years: loan.loanTermYears,
+    description: loan.description || null,
+    principal_amount: loan.principalAmount,
+    fine_in: loan.fineIn,
+    fine_out: loan.fineOut ?? 0,
+    emi: calculateLoanEmi(loan.principalAmount, loan.loanTermYears) ?? loan.emi,
+  };
+};
 
 export async function createLoan(loan: Loan) {
   const member = await resolveMember(loan);
@@ -656,7 +674,7 @@ export async function createLoanPayment(payment: LoanPayment) {
   let { data: loan, error: loanError } = await supabase
     .from("loans")
     .select(
-      "principal_amount, fine_in, fine_out, renewal_paid, loan_date, loan_term_years"
+      "loan_status, principal_amount, fine_in, fine_out, renewal_paid, loan_date, loan_term_years"
     )
     .eq("id", payment.loanId)
     .maybeSingle();
@@ -665,7 +683,9 @@ export async function createLoanPayment(payment: LoanPayment) {
     renewalPaidColumnAvailable = false;
     const fallback = await supabase
       .from("loans")
-      .select("principal_amount, fine_in, fine_out, loan_date, loan_term_years")
+      .select(
+        "loan_status, principal_amount, fine_in, fine_out, loan_date, loan_term_years"
+      )
       .eq("id", payment.loanId)
       .maybeSingle();
 
@@ -721,6 +741,11 @@ export async function createLoanPayment(payment: LoanPayment) {
   const remainingFine = calculateRemainingFine(
     loan.fine_in === null ? null : Number(loan.fine_in),
     currentFineOut
+  );
+
+  const nextRemainingPrincipal = calculateRemainingPrincipal(
+    Number(loan.principal_amount),
+    paidAmount + payment.amount
   );
 
   if (payment.finePaid > remainingFine) {
@@ -817,14 +842,26 @@ export async function createLoanPayment(payment: LoanPayment) {
 
   if (error) throw new Error(getSupabaseErrorMessage(error));
 
-  if (payment.finePaid > 0 || payment.renewalPaid > 0) {
+  const nextFineOut = currentFineOut + payment.finePaid;
+  const nextRemainingFine = calculateRemainingFine(
+    loan.fine_in === null ? null : Number(loan.fine_in),
+    nextFineOut
+  );
+  const loanStatus = calculateLoanStatus(
+    loan.loan_status,
+    nextRemainingPrincipal,
+    nextRemainingFine
+  );
+
+  {
     const loanUpdates: {
       fine_out?: number;
       renewal_paid?: number;
-    } = {};
+      loan_status: LoanStatus;
+    } = { loan_status: loanStatus };
 
     if (payment.finePaid > 0) {
-      loanUpdates.fine_out = currentFineOut + payment.finePaid;
+      loanUpdates.fine_out = nextFineOut;
     }
 
     if (payment.renewalPaid > 0) {
