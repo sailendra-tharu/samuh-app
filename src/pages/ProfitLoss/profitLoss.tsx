@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import NepaliDate from "nepali-date-converter";
 
+import { getInvestmentGainOrLoss } from "@/api/investment";
 import type { Loan } from "@/api/loan";
 import type { LossEntry } from "@/api/loss";
 import type { Saving } from "@/api/saving";
@@ -36,8 +37,7 @@ type MonthlySummary = {
   newMember: number;
   renewal: number;
   interest: number;
-  investmentReturn: number;
-  investmentLoss: number;
+  investmentGainOrLoss: number;
   profit: number;
   loss: number;
   net: number;
@@ -51,9 +51,10 @@ const getMonthlyDescription = (row: MonthlySummary) => {
   if (row.newMember > 0) profitSources.push("New Member");
   if (row.renewal > 0) profitSources.push("Renewal Paid");
   if (row.interest > 0) profitSources.push("Interest");
-  if (row.investmentReturn > 0) profitSources.push("Returned");
-  if (row.investmentLoss > 0) lossSources.push("Investment");
-  if (row.loss - row.investmentLoss > 0) lossSources.push("Other Loss");
+  if (row.investmentGainOrLoss !== 0) {
+    profitSources.push("Investment Gain / Loss");
+  }
+  if (row.loss > 0) lossSources.push("Manual Loss");
 
   return {
     profit: profitSources.length > 0 ? profitSources.join(", ") : "None",
@@ -236,37 +237,34 @@ function ProfitLoss() {
       ? new NepaliDate(selectedYear, selectedMonth, 1).format("YYYY-MM")
       : null;
   const currentMonthKey = currentBS.format("YYYY-MM");
-  const getInvestmentLoss = (monthKey: string) => {
+  const lossMonthKey =
+    selectedMonthKey ??
+    (selectedYear !== null
+      ? new NepaliDate(selectedYear, currentBS.getMonth(), 1).format("YYYY-MM")
+      : null);
+  const getInvestmentGainOrLossForMonth = (monthKey: string) => {
     if (monthKey !== currentMonthKey) return 0;
 
-    return investments.reduce(
-      (total, investment) => total + (investment.investedAmount ?? 0),
-      0
-    );
-  };
-  const getInvestmentReturn = (monthKey: string) => {
-    if (monthKey !== currentMonthKey) return 0;
+    return investments.reduce((total, investment) => {
+      const gainOrLoss = getInvestmentGainOrLoss(investment);
 
-    return investments.reduce(
-      (total, investment) => total + investment.returnValue,
-      0
-    );
+      return gainOrLoss === null ? total : total + gainOrLoss;
+    }, 0);
   };
   const getMonthlySummary = (monthKey: string): MonthlySummary => {
     const savingProfit = getSavingProfit(savings, monthKey);
     const loanProfit = getLoanProfit(loans, monthKey);
-    const investmentReturn = getInvestmentReturn(monthKey);
-    const investmentLoss = getInvestmentLoss(monthKey);
+    const investmentGainOrLoss = getInvestmentGainOrLossForMonth(monthKey);
     const profit =
       savingProfit.fineOut +
       savingProfit.newMember +
       loanProfit.renewal +
       loanProfit.interest +
       loanProfit.fineOut +
-      investmentReturn;
+      investmentGainOrLoss;
     const loss = lossEntries
       .filter((entry) => getBSMonthKey(entry.lossDate) === monthKey)
-      .reduce((total, entry) => total + entry.amount, 0) + investmentLoss;
+      .reduce((total, entry) => total + entry.amount, 0);
     const month = monthOptions.find((option) => option.key === monthKey);
 
     return {
@@ -277,8 +275,7 @@ function ProfitLoss() {
       newMember: savingProfit.newMember,
       renewal: loanProfit.renewal,
       interest: loanProfit.interest,
-      investmentReturn,
-      investmentLoss,
+      investmentGainOrLoss,
       profit,
       loss,
       net: profit - loss,
@@ -292,8 +289,7 @@ function ProfitLoss() {
     newMember: 0,
     renewal: 0,
     interest: 0,
-    investmentReturn: 0,
-    investmentLoss: 0,
+    investmentGainOrLoss: 0,
     profit: 0,
     loss: 0,
     net: 0,
@@ -302,12 +298,8 @@ function ProfitLoss() {
     selectedYear === null
       ? []
       : monthOptions.map((month) => getMonthlySummary(month.key));
-  const annualInvestmentLoss = annualRows.reduce(
-    (total, row) => total + row.investmentLoss,
-    0
-  );
-  const annualInvestmentReturn = annualRows.reduce(
-    (total, row) => total + row.investmentReturn,
+  const annualInvestmentGainOrLoss = annualRows.reduce(
+    (total, row) => total + row.investmentGainOrLoss,
     0
   );
   const annualProfit = annualRows.reduce((total, row) => total + row.profit, 0);
@@ -325,8 +317,7 @@ function ProfitLoss() {
           newMember: annualRows.reduce((total, row) => total + row.newMember, 0),
           renewal: annualRows.reduce((total, row) => total + row.renewal, 0),
           interest: annualRows.reduce((total, row) => total + row.interest, 0),
-          investmentReturn: annualInvestmentReturn,
-          investmentLoss: annualInvestmentLoss,
+          investmentGainOrLoss: annualInvestmentGainOrLoss,
           profit: annualProfit,
           loss: annualLoss,
           net: annualNet,
@@ -379,23 +370,15 @@ function ProfitLoss() {
     },
     {
       id: "investment-return",
-      category: "Investment Return",
-      amount: selectedSummary.investmentReturn,
-      details: "Returned amounts from investments",
+      category: "Investment Gain / Loss",
+      amount: selectedSummary.investmentGainOrLoss,
+      details: "Gain / Loss values from the investments table",
     },
   ]
     : [];
   const detailRows: DetailRow[] = selectedYear !== null
     ? [
         ...profitRows.map((row) => ({ ...row, type: "Profit" as const })),
-        {
-          id: "investment-loss",
-          category: "Investment",
-          type: "Loss" as const,
-          amount: selectedSummary.investmentLoss,
-          details:
-            "Invested amounts from the investments table; assigned to the current B.S. month.",
-        },
         ...selectedPeriodLosses.map((lossEntry) => ({
           id: `monthly-loss-${lossEntry.id ?? lossEntry.lossDate}`,
           category: lossEntry.category || "Monthly Loss",
@@ -422,7 +405,7 @@ function ProfitLoss() {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!selectedMonthKey) return;
+    if (!lossMonthKey) return;
 
     const amountValue = amount ?? (monthlyLoss ? String(monthlyLoss.amount) : "");
     const lossDetails = details ?? monthlyLoss?.details ?? "";
@@ -437,7 +420,7 @@ function ProfitLoss() {
     try {
       await saveLoss({
         id: existingLoss?.id,
-        lossDate: getLossDateForMonth(selectedMonthKey),
+        lossDate: getLossDateForMonth(lossMonthKey),
         category: "Monthly Loss",
         amount: parsedAmount,
         details: lossDetails,
@@ -588,8 +571,7 @@ function ProfitLoss() {
                 <th className="px-5 py-3 text-right font-medium">New Member</th>
                 <th className="px-5 py-3 text-right font-medium">Renewal</th>
                 <th className="px-5 py-3 text-right font-medium">Interest</th>
-                <th className="px-5 py-3 text-right font-medium">Returned</th>
-                <th className="px-5 py-3 text-right font-medium">Investment Loss</th>
+                <th className="px-5 py-3 text-right font-medium">Investment Gain / Loss</th>
                 <th className="px-5 py-3 text-right font-medium">Profit</th>
                 <th className="px-5 py-3 text-right font-medium">Loss</th>
                 <th className="px-5 py-3 text-right font-medium sm:px-6">Net</th>
@@ -621,8 +603,7 @@ function ProfitLoss() {
                   <td className="px-5 py-4 text-right text-slate-700">{isLoading ? "—" : formatCurrency(row.newMember)}</td>
                 <td className="px-5 py-4 text-right text-slate-700">{isLoading ? "—" : formatCurrency(row.renewal)}</td>
                   <td className="px-5 py-4 text-right text-slate-700">{isLoading ? "—" : formatCurrency(row.interest)}</td>
-                  <td className="px-5 py-4 text-right font-semibold text-[#087b55]">{reportLoading ? "—" : formatCurrency(row.investmentReturn)}</td>
-                  <td className="px-5 py-4 text-right font-semibold text-red-600">{reportLoading ? "—" : formatCurrency(row.investmentLoss)}</td>
+                  <td className={`px-5 py-4 text-right font-semibold ${row.investmentGainOrLoss >= 0 ? "text-[#087b55]" : "text-red-600"}`}>{reportLoading ? "—" : formatCurrency(row.investmentGainOrLoss)}</td>
                   <td className="px-5 py-4 text-right font-semibold text-[#087b55]">{isLoading ? "—" : formatCurrency(row.profit)}</td>
                   <td className="px-5 py-4 text-right font-semibold text-red-600">{reportLoading ? "—" : formatCurrency(row.loss)}</td>
                   <td className={`px-5 py-4 text-right font-semibold sm:px-6 ${row.net >= 0 ? "text-[#087b55]" : "text-red-600"}`}>
@@ -681,7 +662,7 @@ function ProfitLoss() {
 
           <button
             type="submit"
-            disabled={isSaving || !selectedMonthKey}
+            disabled={isSaving || !lossMonthKey}
             className="flex items-center justify-center gap-2 rounded-lg bg-[#087b55] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#07583e] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Plus className="h-4 w-4" />
@@ -723,7 +704,8 @@ function ProfitLoss() {
                   </td>
                   <td className="px-5 py-4 text-slate-500">{row.details}</td>
                   <td className={`px-5 py-4 text-right font-semibold ${row.type === "Profit" ? "text-[#087b55]" : "text-red-600"}`}>
-                    {row.type === "Profit" ? "+" : "-"}{formatCurrency(row.amount)}
+                    {row.amount < 0 || row.type === "Loss" ? "-" : "+"}
+                    {formatCurrency(Math.abs(row.amount))}
                   </td>
                   <td className="px-5 py-4 text-right sm:px-6">
                     {row.lossId !== undefined ? (
