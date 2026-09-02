@@ -14,6 +14,7 @@ import type { LossEntry } from "@/api/loss";
 import type { Saving } from "@/api/saving";
 import Pagination from "@/component/Pagination/pagination";
 import { useInvestments } from "@/hook/investment";
+import { useInvestmentFundIssues } from "@/hook/investmentFund";
 import { useLossEntries } from "@/hook/loss";
 import { useLoans } from "@/hook/loan";
 import { useSavings } from "@/hook/saving";
@@ -243,6 +244,11 @@ function ProfitLoss() {
     isLoading: investmentsLoading,
     error: investmentsError,
   } = useInvestments();
+  const {
+    issues: investmentFundIssues,
+    isLoading: investmentFundsLoading,
+    error: investmentFundsError,
+  } = useInvestmentFundIssues();
   {
     /* lossEntries */
   }
@@ -255,7 +261,8 @@ function ProfitLoss() {
     isSaving,
     isDeleting,
   } = useLossEntries();
-  const isLoading = savingsLoading || loansLoading || investmentsLoading;
+  const isLoading =
+    savingsLoading || loansLoading || investmentsLoading || investmentFundsLoading;
   const reportLoading = isLoading || lossLoading;
 
   const monthOptions = getMonthOptions(selectedYear ?? currentYear);
@@ -282,6 +289,9 @@ function ProfitLoss() {
     const savingProfit = getSavingProfit(savings, monthKey);
     const loanProfit = getLoanProfit(loans, monthKey);
     const investmentGainOrLoss = getInvestmentGainOrLossForMonth(monthKey);
+    const investmentFundsIssued = investmentFundIssues
+      .filter((issue) => getBSMonthKey(issue.issueDate) === monthKey)
+      .reduce((total, issue) => total + issue.amount, 0);
     const loss = lossEntries
       .filter((entry) => getBSMonthKey(entry.lossDate) === monthKey)
       .reduce((total, entry) => total + entry.amount, 0);
@@ -295,6 +305,7 @@ function ProfitLoss() {
       loanProfit.principalCollected +
       investmentGainOrLoss -
       loanProfit.principalIssued -
+      investmentFundsIssued -
       loss;
     const profit =
       savingProfit.fineOut +
@@ -529,6 +540,12 @@ function ProfitLoss() {
       {investmentsError && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           Investment data could not be loaded. Check that the <code>investments</code> table is available.
+        </div>
+      )}
+
+      {investmentFundsError && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Investment fund issues could not be loaded. Run the investment fund issue migration in Supabase.
         </div>
       )}
 

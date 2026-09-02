@@ -3,9 +3,12 @@ import {
   BriefcaseBusiness,
   CircleDollarSign,
   Download,
+  Pencil,
   PlusIcon,
   Search,
+  Trash2,
   TrendingUp,
+  Wallet,
 } from "lucide-react";
 
 import {
@@ -13,15 +16,18 @@ import {
   type Investment,
   type InvestmentStatus,
 } from "@/api/investment";
+import type { InvestmentFundIssue } from "@/api/investmentFund";
 import DataTable from "@/component/Table/datatable";
 import DeleteModal from "@/component/Modal/deleteModal";
 import Loader from "@/component/Loader/loader";
 import Modal from "@/component/Modal/modal";
 import { useInvestments, useSearchInvestments } from "@/hook/investment";
+import { useInvestmentFundIssues } from "@/hook/investmentFund";
 import { useSectionAccess } from "@/hook/access";
 import { printPdf } from "@/lib/export";
 
 import InvestmentForm from "./investmentModal";
+import IssueFundsForm from "./issueFundsModal";
 import ReturnForm from "./returnModal";
 import { userColumns } from "./useColumn";
 
@@ -46,8 +52,26 @@ const getErrorMessage = (error: unknown, fallback: string) => {
 const getCurrentValue = (investment: Investment) =>
   investment.currentValue ?? 0;
 
+const formatIssueDate = (dateString: string) => {
+  const date = new Date(`${dateString}T00:00:00Z`);
+
+  if (Number.isNaN(date.getTime())) return dateString;
+
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+};
+
 function Investment() {
   const [open, setOpen] = useState(false);
+  const [issueFundsOpen, setIssueFundsOpen] = useState(false);
+  const [editingFundIssue, setEditingFundIssue] =
+    useState<InvestmentFundIssue | null>(null);
+  const [fundIssueDeleteTarget, setFundIssueDeleteTarget] =
+    useState<InvestmentFundIssue | null>(null);
   const [openDelete, setOpenDelete] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -59,6 +83,8 @@ function Investment() {
     "all"
   );
   const [saveError, setSaveError] = useState("");
+  const [issueFundsError, setIssueFundsError] = useState("");
+  const [fundIssueDeleteError, setFundIssueDeleteError] = useState("");
   const [returnError, setReturnError] = useState("");
   const [deleteError, setDeleteError] = useState("");
   const { canWrite } = useSectionAccess();
@@ -66,13 +92,22 @@ function Investment() {
 
   const {
     investments,
-    isLoading,
+    isLoading: investmentsLoading,
     error: investmentsError,
     createInvestment,
     updateInvestment,
     deleteInvestment,
     isDeleting,
   } = useInvestments();
+  const {
+    issues: investmentFundIssues,
+    isLoading: fundIssuesLoading,
+    error: fundIssuesError,
+    createIssue,
+    updateIssue,
+    deleteIssue,
+    isDeleting: isDeletingFundIssue,
+  } = useInvestmentFundIssues();
   const {
     investments: searchedInvestments,
     isLoading: isSearching,
@@ -89,12 +124,21 @@ function Investment() {
     [investmentsForSearch, statusFilter]
   );
   const loadError = search.trim() ? searchError : investmentsError;
+  const isLoading = investmentsLoading || fundIssuesLoading;
+  const totalFundsIssued = investmentFundIssues.reduce(
+    (total, issue) => total + issue.amount,
+    0
+  );
   const totalInvested = investments.reduce(
     (total, investment) => total + (investment.investedAmount ?? 0),
     0
   );
   const currentValue = investments.reduce(
     (total, investment) => total + getCurrentValue(investment),
+    0
+  );
+  const availableInvestmentFunds = Math.max(
+    totalFundsIssued - totalInvested,
     0
   );
   const totalReturned = investments.reduce(
@@ -165,6 +209,76 @@ function Investment() {
     setOpen(true);
   };
 
+  const startNewInvestment = () => {
+    if (!canWriteInvestments) return;
+
+    setEditingIndex(null);
+    setSaveError("");
+    setOpen(true);
+  };
+
+  const openIssueFunds = () => {
+    if (!canWriteInvestments) return;
+
+    setIssueFundsError("");
+    setEditingFundIssue(null);
+    setIssueFundsOpen(true);
+  };
+
+  const saveIssueFunds = async (issue: Parameters<typeof createIssue>[0]) => {
+    if (!canWriteInvestments) return;
+
+    setIssueFundsError("");
+
+    try {
+      if (editingFundIssue?.id !== undefined) {
+        await updateIssue({ ...issue, id: editingFundIssue.id });
+      } else {
+        await createIssue(issue);
+      }
+
+      setIssueFundsOpen(false);
+      setEditingFundIssue(null);
+    } catch (error) {
+      const message = getErrorMessage(
+        error,
+        "Unable to issue investment funds. Please try again."
+      );
+
+      console.error("Issue investment funds error:", error);
+      setIssueFundsError(message);
+      throw error;
+    }
+  };
+
+  const editFundIssue = (issue: InvestmentFundIssue) => {
+    if (!canWriteInvestments) return;
+
+    setIssueFundsError("");
+    setEditingFundIssue(issue);
+    setIssueFundsOpen(true);
+  };
+
+  const requestDeleteFundIssue = (issue: InvestmentFundIssue) => {
+    if (!canWriteInvestments || issue.id === undefined) return;
+
+    setFundIssueDeleteError("");
+    setFundIssueDeleteTarget(issue);
+  };
+
+  const confirmDeleteFundIssue = async () => {
+    if (!canWriteInvestments || fundIssueDeleteTarget?.id === undefined) return;
+
+    try {
+      await deleteIssue(fundIssueDeleteTarget.id);
+      setFundIssueDeleteTarget(null);
+    } catch (error) {
+      setFundIssueDeleteError(
+        getErrorMessage(error, "Unable to delete the fund issue. Please try again.")
+      );
+    }
+  };
+
   const handleDeleteClick = (index: number) => {
     if (!canWriteInvestments) return;
 
@@ -231,6 +345,12 @@ function Investment() {
     setSaveError("");
   };
 
+  const closeIssueFunds = () => {
+    setIssueFundsOpen(false);
+    setEditingFundIssue(null);
+    setIssueFundsError("");
+  };
+
   const closeReturn = () => {
     setReturnInvestment(null);
     setReturnError("");
@@ -238,12 +358,28 @@ function Investment() {
 
   const statCards = [
     {
+      label: "Funds issued",
+      value: formatCurrency(totalFundsIssued),
+      detail: "Money withdrawn or allocated for investments",
+      icon: Wallet,
+      iconClass: "bg-[#fff4da] text-[#bf7b08]",
+      accent: "#bf7b08",
+    },
+    {
       label: "Total invested",
       value: formatCurrency(totalInvested),
       detail: "Capital placed across all investments",
       icon: BriefcaseBusiness,
       iconClass: "bg-[#e7f7ef] text-[#09815a]",
       accent: "#09815a",
+    },
+    {
+      label: "Available to invest",
+      value: formatCurrency(availableInvestmentFunds),
+      detail: "Remaining funds for another investment",
+      icon: CircleDollarSign,
+      iconClass: "bg-[#e8f3ff] text-[#3679c9]",
+      accent: "#3679c9",
     },
     {
       label: "Current value",
@@ -297,7 +433,7 @@ function Investment() {
         </div>
       )}
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         {statCards.map((stat) => {
           const Icon = stat.icon;
 
@@ -322,6 +458,99 @@ function Investment() {
             </article>
           );
         })}
+      </section>
+
+      <section className="min-w-0 rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)]">
+        <div className="flex flex-col gap-2 border-b border-slate-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div>
+            <h3 className="text-base font-semibold text-slate-900">
+              Investment fund issue history
+            </h3>
+            <p className="mt-1 text-sm text-slate-500">
+              See when money was issued and what it was issued for.
+            </p>
+          </div>
+          <p className="text-sm text-slate-500">
+            {investmentFundIssues.length.toLocaleString()} issue
+            {investmentFundIssues.length === 1 ? "" : "s"}
+          </p>
+        </div>
+
+        {fundIssueDeleteError && (
+          <div className="border-b border-red-100 bg-red-50 px-5 py-3 text-sm text-red-700 sm:px-6">
+            {fundIssueDeleteError}
+          </div>
+        )}
+
+        {fundIssuesError ? (
+          <div className="px-5 py-6 text-sm text-red-700 sm:px-6">
+            Unable to load issue history: {getErrorMessage(fundIssuesError, "Unknown error")}
+          </div>
+        ) : fundIssuesLoading ? (
+          <div className="px-5 py-8 sm:px-6">
+            <Loader />
+          </div>
+        ) : investmentFundIssues.length === 0 ? (
+          <p className="px-5 py-8 text-center text-sm text-slate-500 sm:px-6">
+            No investment funds have been issued yet.
+          </p>
+        ) : (
+          <div className="max-w-full overflow-x-auto overscroll-x-contain">
+            <table className="min-w-[760px] w-full text-left text-sm">
+              <thead className="bg-slate-50 text-xs uppercase tracking-[0.08em] text-slate-500">
+                <tr>
+                  <th className="px-5 py-3 font-medium sm:px-6">Issue Date</th>
+                  <th className="px-5 py-3 text-right font-medium sm:px-6">
+                    Amount Issued
+                  </th>
+                  <th className="px-5 py-3 font-medium sm:px-6">
+                    Purpose / Details
+                  </th>
+                  <th className="px-5 py-3 text-right font-medium sm:px-6">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {investmentFundIssues.map((issue) => (
+                  <tr key={issue.id ?? `${issue.issueDate}-${issue.amount}`}>
+                    <td className="px-5 py-4 text-slate-700 sm:px-6">
+                      {formatIssueDate(issue.issueDate)}
+                    </td>
+                    <td className="px-5 py-4 text-right font-semibold text-amber-700 sm:px-6">
+                      {formatCurrency(issue.amount)}
+                    </td>
+                    <td className="max-w-[420px] px-5 py-4 text-slate-600 sm:px-6">
+                      {issue.description || "No details added"}
+                    </td>
+                    <td className="px-5 py-4 sm:px-6">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => editFundIssue(issue)}
+                          className="rounded-md p-2 text-blue-600 hover:bg-blue-50"
+                          title="Edit fund issue"
+                          aria-label={`Edit fund issue from ${formatIssueDate(issue.issueDate)}`}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => requestDeleteFundIssue(issue)}
+                          className="rounded-md p-2 text-red-600 hover:bg-red-50"
+                          title="Delete fund issue"
+                          aria-label={`Delete fund issue from ${formatIssueDate(issue.issueDate)}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       <section className="min-w-0 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)] sm:p-6">
@@ -363,15 +592,20 @@ function Investment() {
 
             {canWriteInvestments && <button
               type="button"
-              onClick={() => {
-                setEditingIndex(null);
-                setSaveError("");
-                setOpen(true);
-              }}
+              onClick={startNewInvestment}
               className="flex w-full items-center justify-center gap-2 rounded-md bg-green-700 px-4 py-2 text-white hover:bg-green-800 sm:w-auto"
             >
               <PlusIcon className="h-4 w-4" />
               Add Investment
+            </button>}
+
+            {canWriteInvestments && <button
+              type="button"
+              onClick={openIssueFunds}
+              className="flex w-full items-center justify-center gap-2 rounded-md border border-amber-600 px-4 py-2 text-amber-700 hover:bg-amber-50 sm:w-auto"
+            >
+              <Wallet className="h-4 w-4" />
+              Issue Funds
             </button>}
 
             <button
@@ -404,6 +638,35 @@ function Investment() {
           />
         )}
       </section>
+
+      <Modal
+        isOpen={issueFundsOpen}
+        onClose={closeIssueFunds}
+        title={editingFundIssue ? "Edit Investment Fund Issue" : "Issue Investment Funds"}
+        bodyClassName="max-h-[70vh]"
+        bodyScrollable
+      >
+        <IssueFundsForm
+          initialData={editingFundIssue ?? undefined}
+          onSubmit={saveIssueFunds}
+          onCancel={closeIssueFunds}
+          error={issueFundsError}
+        />
+      </Modal>
+
+      <DeleteModal
+        open={fundIssueDeleteTarget !== null}
+        title="Delete Fund Issue"
+        message="Are you sure you want to delete this investment fund issue?"
+        onClose={() => {
+          setFundIssueDeleteTarget(null);
+          setFundIssueDeleteError("");
+        }}
+        onConfirm={() => {
+          void confirmDeleteFundIssue();
+        }}
+        isLoading={isDeletingFundIssue}
+      />
 
       <Modal
         isOpen={open}

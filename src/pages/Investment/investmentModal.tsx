@@ -167,7 +167,7 @@ export default function InvestmentForm({
         >
           {isSubmitting
             ? "Saving..."
-            : initialData
+            : initialData?.id !== undefined
               ? "Update Investment"
               : "Save Investment"}
         </button>
