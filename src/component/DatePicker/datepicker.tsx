@@ -51,6 +51,7 @@ interface BSDatePickerProps {
   placeholder?: string;
   label?: string;
   disabled?: boolean;
+  allowFutureDates?: boolean;
   error?: string;
   className?: string;
 }
@@ -60,6 +61,7 @@ export default function BSDatePicker({
   onChange,
   placeholder = "Select a date",
   disabled = false,
+  allowFutureDates = false,
   error,
   className,
 }: BSDatePickerProps) {
@@ -113,7 +115,9 @@ export default function BSDatePicker({
    * We only allow dates up to the current BS year.
    */
   const MIN_YEAR = 2000;
-  const MAX_YEAR = todayBS.getYear();
+  const MAX_YEAR = allowFutureDates
+    ? Math.min(todayBS.getYear() + 1, 2090)
+    : todayBS.getYear();
 
   const years = useMemo(() => {
     const result: number[] = [];
@@ -290,7 +294,7 @@ export default function BSDatePicker({
 
     cellAD.setHours(0, 0, 0, 0);
 
-    return cellAD >= todayADStart;
+    return !allowFutureDates && cellAD >= todayADStart;
   };
 
   /*
@@ -479,8 +483,9 @@ export default function BSDatePicker({
               type="button"
               onClick={handleNextMonth}
               disabled={
-                viewYear === MAX_YEAR &&
-                viewMonth === todayBS.getMonth()
+                allowFutureDates
+                  ? viewYear === MAX_YEAR && viewMonth === 11
+                  : viewYear === MAX_YEAR && viewMonth === todayBS.getMonth()
               }
               className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
             >

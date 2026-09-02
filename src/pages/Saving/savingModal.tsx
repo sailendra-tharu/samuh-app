@@ -67,12 +67,14 @@ export default function SavingForm({
 }: SavingFormProps) {
   const [form, setForm] = useState<Saving>(createEmptyForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [dateError, setDateError] = useState("");
   const { members } = useMembers();
 
   useEffect(() => {
     // Reset the form when the modal switches between add and edit modes.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm(initialData ?? createEmptyForm());
+    setDateError("");
   }, [initialData]);
 
   useEffect(() => {
@@ -119,6 +121,13 @@ export default function SavingForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (variant === "next-month" && !form.date) {
+      setDateError("Please select a saving date.");
+      return;
+    }
+
+    setDateError("");
     setIsSubmitting(true);
 
     try {
@@ -156,11 +165,23 @@ export default function SavingForm({
 
       {variant === "next-month" ? (
         <>
-          <div className="rounded-lg border border-green-100 bg-green-50 px-4 py-3">
-            <p className="text-sm font-medium text-green-800">Next saving month</p>
-            <p className="mt-1 text-sm text-green-700">
-              {toBSDate(form.date) || "—"}
-            </p>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Saving Date (B.S.)
+            </label>
+            <DatePicker
+              value={toBSDate(form.date)}
+              onChange={(bsDate) => {
+                setDateError("");
+                setForm((previous) => ({
+                  ...previous,
+                  date: toADDate(bsDate),
+                }));
+              }}
+              allowFutureDates
+              error={dateError}
+              placeholder="Select saving date"
+            />
             {form.fineIn !== null && (
               <p className="mt-1 text-xs text-green-700">
                 Fine available: {form.fineIn.toLocaleString()}
