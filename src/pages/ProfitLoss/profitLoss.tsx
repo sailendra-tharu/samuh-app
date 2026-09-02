@@ -13,6 +13,7 @@ import type { Loan } from "@/api/loan";
 import type { LossEntry } from "@/api/loss";
 import type { Saving } from "@/api/saving";
 import Pagination from "@/component/Pagination/pagination";
+import Loader from "@/component/Loader/loader";
 import { useInvestments } from "@/hook/investment";
 import { useInvestmentFundIssues } from "@/hook/investmentFund";
 import { useLossEntries } from "@/hook/loss";
@@ -671,7 +672,7 @@ function ProfitLoss() {
                   <td className="px-5 py-4 font-medium text-slate-800 sm:px-6">{row.label}</td>
                   <td className="px-5 py-4 text-xs leading-5 text-slate-500">
                     {reportLoading ? (
-                      "Calculating profit and loss..."
+                      <Loader />
                     ) : (
                       <>
                         <p><span className="font-semibold text-[#087b55]">Profit:</span> {getMonthlyDescription(row).profit}</p>

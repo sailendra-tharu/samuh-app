@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useAuth } from "@/context/authcontext";
 import { useSectionAccess } from "@/hook/access";
 import { sectionDefinitions, type SectionKey } from "@/lib/access";
+import Loader from "@/component/Loader/loader";
 
 type Props = {
   children: ReactNode;
@@ -13,7 +14,7 @@ export default function ProtectedRoute({ children }: Props) {
   const { loading, isAuthenticated } = useAuth();
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <Loader />;
   }
 
   if (!isAuthenticated) {
@@ -30,7 +31,7 @@ type SectionRouteProps = Props & {
 export function SectionRoute({ children, section }: SectionRouteProps) {
   const { canView, permissions, isLoading } = useSectionAccess();
 
-  if (isLoading) return <div>Loading...</div>;
+  if (isLoading) return <Loader />;
 
   if (canView(section)) return children;
 
