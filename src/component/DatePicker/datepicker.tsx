@@ -168,7 +168,7 @@ export default function BSDatePicker({
     if (!input) return;
 
     const rect = input.getBoundingClientRect();
-    const popupWidth = 320;
+    const popupWidth = Math.min(320, window.innerWidth - 16);
     const popupHeight = calendarRef.current?.getBoundingClientRect().height ?? 300;
     const gap = 4;
     const viewportPadding = 8;
@@ -395,8 +395,11 @@ export default function BSDatePicker({
         createPortal(
           <div
             ref={calendarRef}
-            style={calendarPosition}
-            className="fixed z-[1100] w-[320px] rounded-lg border border-gray-300 bg-white p-3 shadow-lg"
+            style={{
+              ...calendarPosition,
+              width: "min(320px, calc(100vw - 16px))",
+            }}
+            className="fixed z-[1100] max-w-[calc(100vw-1rem)] rounded-lg border border-gray-300 bg-white p-3 shadow-lg"
           >
           {/* Header */}
           <div className="mb-2 flex items-center justify-between gap-2">

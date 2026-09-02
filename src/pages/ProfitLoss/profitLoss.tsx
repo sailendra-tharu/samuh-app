@@ -16,6 +16,7 @@ import { useInvestments } from "@/hook/investment";
 import { useLossEntries } from "@/hook/loss";
 import { useLoans } from "@/hook/loan";
 import { useSavings } from "@/hook/saving";
+import { useSectionAccess } from "@/hook/access";
 
 type ProfitRow = {
   id: string;
@@ -209,6 +210,8 @@ function ProfitLoss() {
   const [overviewPage, setOverviewPage] = useState(1);
   const [detailsPage, setDetailsPage] = useState(1);
   const pageSize = 10;
+  const { canWrite } = useSectionAccess();
+  const canWriteProfitLoss = canWrite("profit-loss");
   const { savings, isLoading: savingsLoading } = useSavings();
   const { loans, isLoading: loansLoading, error: loansError } = useLoans();
   const {
@@ -405,7 +408,7 @@ function ProfitLoss() {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!lossMonthKey) return;
+    if (!canWriteProfitLoss || !lossMonthKey) return;
 
     const amountValue = amount ?? (monthlyLoss ? String(monthlyLoss.amount) : "");
     const lossDetails = details ?? monthlyLoss?.details ?? "";
@@ -435,6 +438,8 @@ function ProfitLoss() {
   };
 
   const deleteLossEntry = async (id: number) => {
+    if (!canWriteProfitLoss) return;
+
     setActionError("");
 
     try {
@@ -445,11 +450,11 @@ function ProfitLoss() {
   };
 
   return (
-    <div className="mx-auto min-w-0 w-full max-w-[1480px] space-y-6 pb-8">
-      <section className="relative overflow-hidden rounded-[28px] bg-[#103f34] px-6 py-7 text-white shadow-[0_18px_45px_-24px_rgba(16,63,52,0.8)] sm:px-8 sm:py-8">
+    <div className="mx-auto min-w-0 w-full max-w-[1480px] space-y-5 pb-8 sm:space-y-6">
+      <section className="relative overflow-hidden rounded-2xl bg-[#103f34] px-4 py-5 text-white shadow-[0_18px_45px_-24px_rgba(16,63,52,0.8)] sm:rounded-[28px] sm:px-8 sm:py-8">
         <div className="relative z-10 flex items-start justify-between gap-5">
           <div>
-            <h2 className="text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
+            <h2 className="text-2xl font-semibold tracking-[-0.04em] sm:text-4xl">
               Profit &amp; Loss
             </h2>
             <p className="mt-3 max-w-lg text-sm leading-6 text-emerald-100/75 sm:text-base">
@@ -554,13 +559,13 @@ function ProfitLoss() {
 
       </section>
 
-      <section className="rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)]">
+      <section className="min-w-0 rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)]">
         <div className="border-b border-slate-100 px-5 py-5 sm:px-6">
           <p className="text-base font-semibold text-slate-900">{selectedYear ?? "Select year"} monthly overview</p>
           <p className="mt-1 text-sm text-slate-500">profit and loss for every month of the selected year.</p>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="max-w-full overflow-x-auto overscroll-x-contain">
           <table className="min-w-[1140px] w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-[0.08em] text-slate-500">
               <tr>
@@ -626,58 +631,65 @@ function ProfitLoss() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)] sm:p-6">
-        <div>
-          <p className="text-base font-semibold text-slate-900">Add Loss</p>
-          <p className="mt-1 text-sm text-slate-500">Investments are already included automatically. Add only other losses here.</p>
-        </div>
+      {canWriteProfitLoss ? (
+        <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)] sm:p-6">
+          <div>
+            <p className="text-base font-semibold text-slate-900">Add Loss</p>
+            <p className="mt-1 text-sm text-slate-500">Investments are already included automatically. Add only other losses here.</p>
+          </div>
 
-        <form onSubmit={handleSubmit} className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-[1fr_1.5fr_auto] lg:items-end">
-          <label className="block text-sm font-medium text-slate-700">
-            Amount
-            <input
-              type="number"
-              min="0"
-              step="1"
-              name="amount"
-              value={amount ?? (monthlyLoss ? String(monthlyLoss.amount) : "")}
-              onChange={(event) => setAmount(event.target.value)}
-              placeholder="Rs 0"
-              required
-              className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-normal outline-none focus:border-[#087b55] focus:ring-2 focus:ring-[#b9e5d1]"
-            />
-          </label>
+          <form onSubmit={handleSubmit} className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-[1fr_1.5fr_auto] lg:items-end">
+            <label className="block text-sm font-medium text-slate-700">
+              Amount
+              <input
+                type="number"
+                min="0"
+                step="1"
+                name="amount"
+                value={amount ?? (monthlyLoss ? String(monthlyLoss.amount) : "")}
+                onChange={(event) => setAmount(event.target.value)}
+                placeholder="Rs 0"
+                required
+                className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-normal outline-none focus:border-[#087b55] focus:ring-2 focus:ring-[#b9e5d1]"
+              />
+            </label>
 
-          <label className="block text-sm font-medium text-slate-700">
-            Details
-            <input
-              type="text"
-              name="details"
-              value={details ?? monthlyLoss?.details ?? ""}
-              onChange={(event) => setDetails(event.target.value)}
-              placeholder="Optional note"
-              className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-normal outline-none focus:border-[#087b55] focus:ring-2 focus:ring-[#b9e5d1]"
-            />
-          </label>
+            <label className="block text-sm font-medium text-slate-700">
+              Details
+              <input
+                type="text"
+                name="details"
+                value={details ?? monthlyLoss?.details ?? ""}
+                onChange={(event) => setDetails(event.target.value)}
+                placeholder="Optional note"
+                className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-normal outline-none focus:border-[#087b55] focus:ring-2 focus:ring-[#b9e5d1]"
+              />
+            </label>
 
-          <button
-            type="submit"
-            disabled={isSaving || !lossMonthKey}
-            className="flex items-center justify-center gap-2 rounded-lg bg-[#087b55] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#07583e] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <Plus className="h-4 w-4" />
-            {isSaving ? "Saving..." : monthlyLoss ? "Update loss" : "Save loss"}
-          </button>
-        </form>
-      </section>
+            <button
+              type="submit"
+              disabled={isSaving || !lossMonthKey}
+              className="flex items-center justify-center gap-2 rounded-lg bg-[#087b55] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#07583e] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Plus className="h-4 w-4" />
+              {isSaving ? "Saving..." : monthlyLoss ? "Update loss" : "Save loss"}
+            </button>
+          </form>
+        </section>
+      ) : (
+        <section className="rounded-2xl border border-slate-200/80 bg-slate-50 p-5 text-sm text-slate-500 sm:p-6">
+          You have read-only access to Profit &amp; Loss. Contact an administrator
+          if you need to add or update losses.
+        </section>
+      )}
 
-      <section className="rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)]">
+      <section className="min-w-0 rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)]">
         <div className="border-b border-slate-100 px-5 py-5 sm:px-6">
           <p className="text-base font-semibold text-slate-900">Monthly details</p>
           <p className="mt-1 text-sm text-slate-500">Profits and losses for {selectedMonthLabel}.</p>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="max-w-full overflow-x-auto overscroll-x-contain">
           <table className="min-w-[700px] w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-[0.08em] text-slate-500">
               <tr>
@@ -708,7 +720,7 @@ function ProfitLoss() {
                     {formatCurrency(Math.abs(row.amount))}
                   </td>
                   <td className="px-5 py-4 text-right sm:px-6">
-                    {row.lossId !== undefined ? (
+                    {row.lossId !== undefined && canWriteProfitLoss ? (
                       <button
                         type="button"
                         onClick={() => void deleteLossEntry(row.lossId as number)}

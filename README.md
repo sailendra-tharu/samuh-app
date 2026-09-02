@@ -1,5 +1,31 @@
 # React + TypeScript + Vite
 
+## Admin settings and member permissions
+
+Roles are read from `public.profiles.role`: use `admin` for the administrator and
+`members` for member accounts. The migration repairs the common `default 'user'`
+definition, creates future profiles as members, and adds the `section_access` table
+used by Settings.
+
+Run `supabase/migrations/20260902000000_profiles_and_member_permissions.sql` in the
+Supabase SQL editor. Add or update the existing account profiles, replacing the
+email addresses with your real login emails:
+
+```sql
+insert into public.profiles (id, role)
+select id, 'admin' from auth.users where email = 'admin@example.com'
+on conflict (id) do update set role = excluded.role;
+
+insert into public.profiles (id, role)
+select id, 'members' from auth.users where email = 'member@example.com'
+on conflict (id) do update set role = excluded.role;
+```
+
+After changing a role, sign out and sign in again. Admins can click the profile
+card in the top-right corner, choose **Settings**, and grant member accounts Read
+and Write access per section. Write access controls the add, edit, delete, payment,
+return, and loss-entry actions in the application.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

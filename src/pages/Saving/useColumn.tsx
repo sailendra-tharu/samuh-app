@@ -27,7 +27,8 @@ const helper = createColumnHelper<Saving>();
 export const userColumns = (
   onEdit: (index: number) => void,
   onDelete: (index: number) => void,
-  onAddNextSaving: (index: number) => void
+  onAddNextSaving: (index: number) => void,
+  canWrite = true
 ) => [
   helper.display({
     id: "sn",
@@ -79,44 +80,48 @@ export const userColumns = (
     id: "action",
     header: "Action",
     size: 1,
-    cell: ({ row }) => (
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          className="rounded-md p-2 text-green-600 hover:bg-green-100"
-          onClick={(event) => {
-            event.stopPropagation();
-            onAddNextSaving(row.index);
-          }}
-          title="Add next month saving"
-        >
-          <Plus size={18} />
-        </button>
+    cell: ({ row }) => {
+      if (!canWrite) return null;
 
-        <button
-          type="button"
-          className="rounded-md p-2 text-blue-600 hover:bg-blue-100"
-          onClick={(event) => {
-            event.stopPropagation();
-            onEdit(row.index);
-          }}
-          title="Edit"
-        >
-          <Pencil size={18} />
-        </button>
+      return (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="rounded-md p-2 text-green-600 hover:bg-green-100"
+            onClick={(event) => {
+              event.stopPropagation();
+              onAddNextSaving(row.index);
+            }}
+            title="Add next month saving"
+          >
+            <Plus size={18} />
+          </button>
 
-        <button
-          type="button"
-          className="rounded-md p-2 text-red-600 hover:bg-red-100"
-          onClick={(event) => {
-            event.stopPropagation();
-            onDelete(row.index);
-          }}
-          title="Delete"
-        >
-          <Trash2 size={18} />
-        </button>
-      </div>
-    ),
+          <button
+            type="button"
+            className="rounded-md p-2 text-blue-600 hover:bg-blue-100"
+            onClick={(event) => {
+              event.stopPropagation();
+              onEdit(row.index);
+            }}
+            title="Edit"
+          >
+            <Pencil size={18} />
+          </button>
+
+          <button
+            type="button"
+            className="rounded-md p-2 text-red-600 hover:bg-red-100"
+            onClick={(event) => {
+              event.stopPropagation();
+              onDelete(row.index);
+            }}
+            title="Delete"
+          >
+            <Trash2 size={18} />
+          </button>
+        </div>
+      );
+    },
   }),
 ];

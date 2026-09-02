@@ -20,6 +20,7 @@ import type { Saving } from "@/api/saving";
 import { useLoans } from "@/hook/loan";
 import { useMembers } from "@/hook/member";
 import { useSavings } from "@/hook/saving";
+import { useAuth } from "@/context/authcontext";
 
 const money = new Intl.NumberFormat("en-IN", {
   maximumFractionDigits: 0,
@@ -132,6 +133,7 @@ const getActivityItems = (savings: Saving[], loans: Loan[]) => {
 
 function Dashboard() {
   const navigate = useNavigate();
+  const { role } = useAuth();
   const currentYear = NepaliDate.now().getYear();
   const currentMonth = NepaliDate.now().getMonth();
   const [selectedMonth, setSelectedMonth] = useState<number | null>(currentMonth);
@@ -268,16 +270,16 @@ function Dashboard() {
   ] as const;
 
   return (
-    <div className="mx-auto min-w-0 w-full max-w-[1480px] space-y-6 pb-8">
-      <section className="relative overflow-hidden rounded-[28px] bg-[#103f34] px-6 py-7 text-white shadow-[0_18px_45px_-24px_rgba(16,63,52,0.8)] sm:px-8 sm:py-8">
+    <div className="mx-auto min-w-0 w-full max-w-[1480px] space-y-5 pb-8 sm:space-y-6">
+      <section className="relative overflow-hidden rounded-2xl bg-[#103f34] px-4 py-5 text-white shadow-[0_18px_45px_-24px_rgba(16,63,52,0.8)] sm:rounded-[28px] sm:px-8 sm:py-8">
         <div className="relative z-10 flex flex-col justify-between gap-7 lg:flex-row lg:items-end">
           <div>
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-medium text-emerald-50">
               <span className="h-1.5 w-1.5 rounded-full bg-[#5de0a4]" />
               Group overview
             </div>
-            <h2 className="max-w-xl text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
-              {greeting}, Admin
+            <h2 className="max-w-xl text-2xl font-semibold tracking-[-0.04em] sm:text-4xl">
+              {greeting}, {role === "admin" ? "Admin" : "Member"}
             </h2>
             <p className="mt-3 max-w-lg text-sm leading-6 text-emerald-100/75 sm:text-base">
               Keep your community moving forward with a clear view of every
@@ -431,7 +433,7 @@ function Dashboard() {
             </span>
           </div>
 
-          <div className="mt-7 flex items-center gap-5">
+          <div className="mt-7 flex flex-col gap-5 sm:flex-row sm:items-center">
             <div className="relative grid h-28 w-28 shrink-0 place-items-center rounded-full" style={{ background: `conic-gradient(#6b57ce ${collectionRate}%, #eeeaff ${collectionRate}% 100%)` }}>
               <div className="grid h-[88px] w-[88px] place-items-center rounded-full bg-white">
                 <div className="text-center">
@@ -467,10 +469,10 @@ function Dashboard() {
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(340px,0.8fr)]">
         <article className="rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)]">
-          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-5 sm:px-6">
-            <div>
+          <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-5 sm:px-6">
+            <div className="min-w-0">
               <p className="text-base font-semibold text-slate-900">Recent activity</p>
-              <p className="mt-1 text-sm text-slate-500">The latest movement in your group</p>
+              <p className="mt-1 truncate text-sm text-slate-500">The latest movement in your group</p>
             </div>
             <Activity className="h-5 w-5 text-slate-300" />
           </div>

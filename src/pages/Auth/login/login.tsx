@@ -48,24 +48,24 @@ function Login() {
   };
 
   return (
-    <main className="relative isolate flex min-h-screen items-center justify-center bg-[#f5fbf8] px-5">
-      <section className="w-full max-w-[516px] rounded-[15px] bg-white p-10 shadow-lg">
-        <header className="flex items-center justify-center gap-5">
-          <LogoMark className="h-20 w-20" />
+    <main className="relative isolate flex min-h-screen items-center justify-center bg-[#f5fbf8] px-3 py-6 sm:px-5">
+      <section className="w-full max-w-[516px] rounded-[15px] bg-white p-5 shadow-lg sm:p-10">
+        <header className="flex flex-col items-center justify-center gap-3 text-center sm:flex-row sm:gap-5 sm:text-left">
+          <LogoMark className="h-16 w-16 shrink-0 sm:h-20 sm:w-20" />
 
           <div>
-            <h1 className="text-3xl font-extrabold text-[#087948]">
+            <h1 className="text-2xl font-extrabold text-[#087948] sm:text-3xl">
               HAMRO SAMUH
             </h1>
 
-            <p className="font-bold text-[#00ad62]">
+            <p className="text-sm font-bold text-[#00ad62] sm:text-base">
               Together We Grow
             </p>
           </div>
         </header>
 
-        <div className="mt-8 text-center">
-          <h2 className="text-2xl font-bold text-gray-800">
+        <div className="mt-6 text-center sm:mt-8">
+          <h2 className="text-xl font-bold text-gray-800 sm:text-2xl">
             Welcome Back!
           </h2>
 

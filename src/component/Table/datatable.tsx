@@ -118,7 +118,7 @@ function DataTable<TData>({
 
   return (
 
-    <div>
+    <div className="min-w-0">
 
 
 
@@ -127,7 +127,9 @@ function DataTable<TData>({
 
       <div
         className="
+          max-w-full
           overflow-x-auto
+          overscroll-x-contain
           rounded-lg
           border
           border-gray-300
@@ -140,7 +142,8 @@ function DataTable<TData>({
 
         <table
           className="
-            min-w-full
+            min-w-max
+            w-full
             border-collapse
             border
             border-gray-300
@@ -173,9 +176,10 @@ function DataTable<TData>({
                           border-b
                           border-r
                           border-gray-100
-                          px-6
+                          px-3
                           py-3
                           text-left
+                          whitespace-nowrap
                           text-sm
                           font-semibold
                         "
@@ -308,8 +312,9 @@ function DataTable<TData>({
                             border-b
                             border-r
                             border-gray-100
-                            px-6
+                            px-3
                             py-4
+                            whitespace-nowrap
                             text-sm
                             text-gray-700
                           "
@@ -405,7 +410,7 @@ function DataTable<TData>({
 
       {/* Pagination */}
 
-      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-4 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
 
 
@@ -420,7 +425,7 @@ function DataTable<TData>({
 
 
 
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
 
 
 

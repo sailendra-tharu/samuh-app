@@ -1,4 +1,3 @@
-import { useAuth } from "@/context/authcontext";
 import {
   Home,
   Users,
@@ -8,39 +7,56 @@ import {
   TrendingUp,
   LogOut,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/authcontext";
+import { useSectionAccess } from "@/hook/access";
+import type { SectionKey } from "@/lib/access";
 
-const menuItems = [
+type MenuItem = {
+  name: string;
+  icon: LucideIcon;
+  path: string;
+  section: SectionKey;
+};
+
+const menuItems: MenuItem[] = [
   {
     name: "Dashboard",
     icon: Home,
     path: "/dashboard",
+    section: "dashboard",
   },
   {
     name: "Members",
     icon: Users,
     path: "/members",
+    section: "members",
   },
   {
     name: "Savings",
     icon: Wallet,
     path: "/savings",
+    section: "savings",
   },
   {
     name: "Loans",
     icon: HandCoins,
     path: "/loans",
+    section: "loans",
   },
   {
     name: "Investment",
     icon: TrendingUp,
     path: "/investment",
+    section: "investment",
   },
   {
     name: "Profit & Loss",
     icon: ChartNoAxesCombined,
     path: "/profit-loss",
+    section: "profit-loss",
   },
 ];
 
@@ -51,8 +67,12 @@ type SidebarProps = {
 
 function Sidebar({ isOpen, onClose }: SidebarProps) {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, role, isAdmin } = useAuth();
+  const { canView } = useSectionAccess();
   const location = useLocation();
+  const visibleMenuItems = menuItems.filter(
+    (item) => isAdmin || canView(item.section)
+  );
 
   const handleLogout = async () => {
     try {
@@ -78,7 +98,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
         className={`
     fixed top-0 left-0 z-50
     h-dvh
-    w-[85%] max-w-sm lg:w-64
+    w-[85vw] max-w-[18rem] lg:w-64
     bg-[#006b45] text-white
     flex flex-col
     overflow-y-auto
@@ -88,8 +108,8 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
   `}
       >
         {/* Logo */}
-        <div className="flex h-20 items-center justify-between border-b border-white/10 px-5">
-          <div className="flex items-center gap-3">
+        <div className="flex h-20 items-center justify-between border-b border-white/10 px-4 sm:px-5">
+          <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-white/15 ring-1 ring-white/10">
               <img
                 src="/logo.png"
@@ -98,8 +118,8 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
               />
             </div>
 
-            <div>
-              <h1 className="text-sm font-bold tracking-[0.12em]">HAMRO SAMUH</h1>
+            <div className="min-w-0">
+              <h1 className="truncate text-sm font-bold tracking-[0.12em]">HAMRO SAMUH</h1>
               <p className="mt-0.5 text-[11px] text-emerald-100/60">Together we grow</p>
             </div>
           </div>
@@ -115,9 +135,9 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
 
         {/* Menu */}
-        <nav className="flex-1 overflow-y-auto px-3 py-6">
+        <nav className="flex-1 overflow-y-auto px-2.5 py-5 sm:px-3 sm:py-6">
           <div className="space-y-1.5">
-            {menuItems.map((item) => {
+            {visibleMenuItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
 
@@ -153,9 +173,13 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
               />
             </div>
 
-            <div className="flex-1">
-              <h3 className="text-sm font-semibold">Admin</h3>
-              <p className="text-xs text-emerald-100/55">Super Admin</p>
+            <div className="min-w-0 flex-1">
+              <h3 className="truncate text-sm font-semibold">
+                {role === "admin" ? "Admin" : "Member"}
+              </h3>
+              <p className="truncate text-xs text-emerald-100/55">
+                {role === "admin" ? "Administrator" : "Member account"}
+              </p>
             </div>
           </div>
 

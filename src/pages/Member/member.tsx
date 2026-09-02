@@ -9,6 +9,7 @@ import Modal from "@/component/Modal/modal";
 import MemberForm from "./memberModal";
 
 import { useMembers, useSearchMembers } from "@/hook/member";
+import { useSectionAccess } from "@/hook/access";
 
 import DeleteModal from "@/component/Modal/deleteModal";
 
@@ -34,6 +35,7 @@ function Member() {
 
     const [saveError, setSaveError] = useState("");
     const [deleteError, setDeleteError] = useState("");
+    const { canWrite } = useSectionAccess();
 
 
 
@@ -72,6 +74,8 @@ function Member() {
 
 
     const saveMember = async (member: Member) => {
+        if (!canWrite("members")) return;
+
         setSaveError("");
 
         try {
@@ -103,6 +107,7 @@ function Member() {
 
 
     const editMember = (index: number) => {
+        if (!canWrite("members")) return;
 
 
         setEditingIndex(index);
@@ -119,6 +124,7 @@ function Member() {
 
 
     const handleDeleteClick = (index: number) => {
+        if (!canWrite("members")) return;
 
 
         const member = displayMembers[index];
@@ -177,11 +183,13 @@ function Member() {
 
             <div
                 className="
-                    mb-4
+                    mb-5
                     flex
                     flex-col
                     gap-3
                     sm:flex-row
+                    sm:flex-wrap
+                    sm:items-center
                     sm:justify-end
                 "
             >
@@ -196,6 +204,7 @@ function Member() {
                         relative
                         w-full
                         sm:w-72
+                        sm:flex-none
                     "
                 >
 
@@ -257,7 +266,7 @@ function Member() {
 
                 {/* Add Member Button */}
 
-                <button
+                {canWrite("members") && <button
 
                     onClick={() => {
 
@@ -293,7 +302,7 @@ function Member() {
                     Add Member
 
 
-                </button>
+                </button>}
 
 
 
@@ -317,7 +326,8 @@ function Member() {
 
                     userColumns(
                         editMember,
-                        handleDeleteClick
+                        handleDeleteClick,
+                        canWrite("members")
                     )
 
                 }

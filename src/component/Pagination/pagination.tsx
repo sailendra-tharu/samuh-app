@@ -17,12 +17,12 @@ export default function Pagination({
   const lastItem = Math.min(activePage * pageSize, totalItems);
 
   return (
-    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mt-4 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <p className="text-sm text-slate-600">
         Showing {firstItem} to {lastItem} of {totalItems.toLocaleString()}
       </p>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
         <button
           type="button"
           onClick={() => onPageChange(activePage - 1)}

@@ -8,6 +8,7 @@ import DeleteModal from "@/component/Modal/deleteModal";
 import Loader from "@/component/Loader/loader";
 import Modal from "@/component/Modal/modal";
 import { useSavings, useSearchSavings } from "@/hook/saving";
+import { useSectionAccess } from "@/hook/access";
 import { printPdf } from "@/lib/export";
 
 import SavingForm from "./savingModal";
@@ -79,6 +80,8 @@ function Savings() {
   const [saveError, setSaveError] = useState("");
   const [deleteError, setDeleteError] = useState("");
   const [nextMonthSaving, setNextMonthSaving] = useState<Saving | null>(null);
+  const { canWrite } = useSectionAccess();
+  const canWriteSavings = canWrite("savings");
 
   const {
     savings,
@@ -179,6 +182,8 @@ function Savings() {
   };
 
   const saveSaving = async (saving: Saving) => {
+    if (!canWriteSavings) return;
+
     setSaveError("");
 
     try {
@@ -204,6 +209,8 @@ function Savings() {
   };
 
   const editSaving = (index: number) => {
+    if (!canWriteSavings) return;
+
     setNextMonthSaving(null);
     setEditingIndex(index);
     setSaveError("");
@@ -211,6 +218,8 @@ function Savings() {
   };
 
   const addNextMonthSaving = (index: number) => {
+    if (!canWriteSavings) return;
+
     const saving = displaySavings[index];
 
     if (!saving) return;
@@ -222,6 +231,8 @@ function Savings() {
   };
 
   const handleDeleteClick = (index: number) => {
+    if (!canWriteSavings) return;
+
     const saving = displaySavings[index];
 
     if (saving?.id === undefined) return;
@@ -262,8 +273,8 @@ function Savings() {
         </div>
       )}
 
-      <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-end">
-        <div className="relative w-full sm:w-72">
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+        <div className="relative w-full sm:w-72 sm:flex-none">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
           <input
             type="text"
@@ -305,7 +316,7 @@ function Savings() {
           </select>
         </div>
 
-        <button
+        {canWriteSavings && <button
           type="button"
           onClick={() => {
             setNextMonthSaving(null);
@@ -317,7 +328,7 @@ function Savings() {
         >
           <PlusIcon className="h-4 w-4" />
           Add Saving
-        </button>
+        </button>}
         <button
           type="button"
           onClick={exportSavings}
@@ -333,7 +344,8 @@ function Savings() {
         columns={userColumns(
           editSaving,
           handleDeleteClick,
-          addNextMonthSaving
+          addNextMonthSaving,
+          canWriteSavings
         )}
         data={displaySavings}
         isLoading={search.trim() ? isSearching : isLoading}

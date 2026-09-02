@@ -27,17 +27,17 @@ function DeleteModal({
     <div
       className="
         fixed inset-0 z-50
-        flex items-center justify-center
+        flex items-center justify-center p-4
         bg-gray-900/20
       "
     >
 
       <div
         className="
-          w-[320px]
+          w-full max-w-[320px]
           rounded-3xl
           bg-white
-          px-8
+          px-5 sm:px-8
           py-7
           text-center
           shadow-xl

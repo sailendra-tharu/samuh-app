@@ -8,6 +8,7 @@ import DeleteModal from "@/component/Modal/deleteModal";
 import Loader from "@/component/Loader/loader";
 import Modal from "@/component/Modal/modal";
 import { useLoans, useSearchLoans } from "@/hook/loan";
+import { useSectionAccess } from "@/hook/access";
 import { printPdf } from "@/lib/export";
 
 import LoanForm from "./loanModal";
@@ -58,6 +59,8 @@ function Loans() {
   const [deleteError, setDeleteError] = useState("");
   const [paymentLoan, setPaymentLoan] = useState<Loan | null>(null);
   const [paymentError, setPaymentError] = useState("");
+  const { canWrite } = useSectionAccess();
+  const canWriteLoans = canWrite("loans");
 
   const {
     loans,
@@ -135,6 +138,8 @@ function Loans() {
   };
 
   const saveLoan = async (loan: Loan) => {
+    if (!canWriteLoans) return;
+
     setSaveError("");
 
     try {
@@ -159,12 +164,16 @@ function Loans() {
   };
 
   const editLoan = (index: number) => {
+    if (!canWriteLoans) return;
+
     setEditingIndex(index);
     setSaveError("");
     setOpen(true);
   };
 
   const handleDeleteClick = (index: number) => {
+    if (!canWriteLoans) return;
+
     const loan = displayLoans[index];
 
     if (loan?.id === undefined) return;
@@ -175,6 +184,8 @@ function Loans() {
   };
 
   const handleAddPaymentClick = (index: number) => {
+    if (!canWriteLoans) return;
+
     const loan = displayLoans[index];
 
     if (loan?.id === undefined) return;
@@ -184,7 +195,7 @@ function Loans() {
   };
 
   const savePayment = async (payment: LoanPaymentDraft) => {
-    if (paymentLoan?.id === undefined) return;
+    if (!canWriteLoans || paymentLoan?.id === undefined) return;
 
     setPaymentError("");
 
@@ -211,7 +222,7 @@ function Loans() {
   };
 
   const confirmDelete = async () => {
-    if (deleteId === null) return;
+    if (!canWriteLoans || deleteId === null) return;
 
     try {
       await deleteLoan(deleteId);
@@ -230,8 +241,8 @@ function Loans() {
 
   return (
     <>
-      <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-end">
-        <div className="relative w-full sm:w-72">
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+        <div className="relative w-full sm:w-72 sm:flex-none">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
           <input
             type="text"
@@ -273,7 +284,7 @@ function Loans() {
           </select>
         </div>
 
-        <button
+        {canWriteLoans && <button
           type="button"
           onClick={() => {
             setEditingIndex(null);
@@ -284,7 +295,7 @@ function Loans() {
         >
           <PlusIcon className="h-4 w-4" />
           Add Loan
-        </button>
+        </button>}
         <button
           type="button"
           onClick={exportLoans}
@@ -311,7 +322,8 @@ function Loans() {
           columns={userColumns(
             editLoan,
             handleDeleteClick,
-            handleAddPaymentClick
+            handleAddPaymentClick,
+            canWriteLoans
           )}
           data={displayLoans}
           isLoading={search.trim() ? isSearching : isLoading}

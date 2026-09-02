@@ -203,7 +203,7 @@ export default function LoanDetails() {
         Back to loans
       </Link>
 
-      <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+      <section className="min-w-0 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-xl font-semibold text-gray-900">
             Loan Payment Details
@@ -260,8 +260,8 @@ export default function LoanDetails() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full border-collapse border border-gray-200">
+        <div className="max-w-full overflow-x-auto overscroll-x-contain">
+          <table className="min-w-[680px] border-collapse border border-gray-200">
             <thead className="bg-[#006b45] text-left text-sm text-white">
               <tr>
                 <th className="border-r border-white/20 px-4 py-3">Payment Date</th>

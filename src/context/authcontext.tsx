@@ -5,9 +5,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { getProfileRole } from "@/api/profile";
+import { getMetadataRole, type UserRole } from "@/lib/access";
 
 /* eslint-disable react-refresh/only-export-components -- This module intentionally exports the auth provider and its hook. */
 
@@ -16,6 +19,8 @@ type AuthContextType = {
   session: Session | null;
   loading: boolean;
   isAuthenticated: boolean;
+  role: UserRole;
+  isAdmin: boolean;
 
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -28,9 +33,10 @@ type AuthProviderProps = {
 };
 
 export function AuthProvider({ children }: AuthProviderProps) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
@@ -46,7 +52,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       setSession(data.session);
       setUser(data.session?.user ?? null);
-      setLoading(false);
+      setAuthLoading(false);
     };
 
     getInitialSession();
@@ -56,7 +62,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
+      setAuthLoading(false);
     });
 
     return () => {
@@ -64,6 +70,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
       subscription.unsubscribe();
     };
   }, []);
+
+  const profileRoleQuery = useQuery({
+    queryKey: ["profile-role", user?.id],
+    queryFn: () => getProfileRole(user?.id ?? ""),
+    enabled: user !== null,
+    retry: false,
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
+  const role: UserRole = profileRoleQuery.data ?? getMetadataRole(user);
 
   const login = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
@@ -82,13 +98,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (error) {
       throw error;
     }
+
+    queryClient.removeQueries({ queryKey: ["profile-role"] });
+    queryClient.removeQueries({ queryKey: ["member-section-access"] });
   };
 
   const value: AuthContextType = {
     user,
     session,
-    loading,
+    loading: authLoading || (user !== null && profileRoleQuery.isLoading),
     isAuthenticated: !!session,
+    role,
+    isAdmin: role === "admin",
     login,
     logout,
   };

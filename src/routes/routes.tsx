@@ -2,6 +2,7 @@ import { lazy } from "react";
 import Layout from "@/layout/applayout";
 import PublicRoute from "./publicRoutes";
 import ProtectedRoute from "./privateRoutes";
+import { AdminRoute, SectionRoute } from "./privateRoutes";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 
 /* eslint-disable react-refresh/only-export-components -- This module is route configuration, not a component module. */
@@ -15,6 +16,8 @@ const Login = lazy(() => import("@/pages/Auth/login/login"));
 const Dashboard = lazy(() => import("@/pages/Dashboard/dashboard"));
 const ProfitLoss = lazy(() => import("@/pages/ProfitLoss/profitLoss"));
 const Investment = lazy(() => import("@/pages/Investment/investment"));
+const AccessControl = lazy(() => import("@/pages/AccessControl/accessControl"));
+const NoAccess = lazy(() => import("@/pages/AccessControl/noAccess"));
 
 
 export const router = createBrowserRouter([
@@ -42,35 +45,79 @@ export const router = createBrowserRouter([
     children: [
       {
         path: "dashboard",
-        element: <Dashboard />,
+        element: (
+          <SectionRoute section="dashboard">
+            <Dashboard />
+          </SectionRoute>
+        ),
       },
        {
         path: "members",
-        element: <Members />,
+        element: (
+          <SectionRoute section="members">
+            <Members />
+          </SectionRoute>
+        ),
        },
        {
         path: "savings",
-        element: <Savings />,
+        element: (
+          <SectionRoute section="savings">
+            <Savings />
+          </SectionRoute>
+        ),
        },
        {
         path: "savings/:id",
-        element: <SavingDetails />,
+        element: (
+          <SectionRoute section="savings">
+            <SavingDetails />
+          </SectionRoute>
+        ),
        },
        {
         path: "loans",
-        element: <Loans />,
+        element: (
+          <SectionRoute section="loans">
+            <Loans />
+          </SectionRoute>
+        ),
       },
       {
         path: "loans/:id",
-        element: <LoanDetails />,
+        element: (
+          <SectionRoute section="loans">
+            <LoanDetails />
+          </SectionRoute>
+        ),
       },
       {
         path: "profit-loss",
-        element: <ProfitLoss />,
+        element: (
+          <SectionRoute section="profit-loss">
+            <ProfitLoss />
+          </SectionRoute>
+        ),
       },
       {
         path: "investment",
-        element: <Investment />,
+        element: (
+          <SectionRoute section="investment">
+            <Investment />
+          </SectionRoute>
+        ),
+      },
+      {
+        path: "access-control",
+        element: (
+          <AdminRoute>
+            <AccessControl />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: "no-access",
+        element: <NoAccess />,
       },
     ],
   },

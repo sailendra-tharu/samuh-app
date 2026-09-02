@@ -269,11 +269,11 @@ export default function SavingForm({
         </p>
       )}
 
-      <div className="flex justify-end gap-3 pt-3">
+      <div className="flex flex-col-reverse gap-2 pt-3 sm:flex-row sm:justify-end sm:gap-3">
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-lg bg-red-600 px-5 py-2 text-white hover:bg-red-700"
+          className="w-full rounded-lg bg-red-600 px-5 py-2 text-white hover:bg-red-700 sm:w-auto"
         >
           Cancel
         </button>
@@ -281,7 +281,7 @@ export default function SavingForm({
         <button
           type="submit"
           disabled={isSubmitting}
-          className="rounded-lg bg-green-600 px-5 py-2 text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-lg bg-green-600 px-5 py-2 text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
         >
           {isSubmitting
             ? "Saving..."

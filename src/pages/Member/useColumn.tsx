@@ -34,7 +34,8 @@ const helper = createColumnHelper<Member>();
 
 export const userColumns = (
   onEdit: (index: number) => void,
-  onDelete: (index: number) => void
+  onDelete: (index: number) => void,
+  canWrite = true
 ) => [
   // S.N Column
   helper.display({
@@ -67,30 +68,34 @@ export const userColumns = (
   helper.display({
     id: "action",
     header: "Action",
-    cell: ({ row }) => (
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onEdit(row.index);
-          }}
-          className="text-blue-600 hover:text-blue-800"
-        >
-          <Pencil size={18} />
-        </button>
+    cell: ({ row }) => {
+      if (!canWrite) return null;
 
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onDelete(row.index);
-          }}
-          className="text-red-600 hover:text-red-800"
-        >
-          <Trash2 size={18} />
-        </button>
-      </div>
-    ),
+      return (
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onEdit(row.index);
+            }}
+            className="text-blue-600 hover:text-blue-800"
+          >
+            <Pencil size={18} />
+          </button>
+
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onDelete(row.index);
+            }}
+            className="text-red-600 hover:text-red-800"
+          >
+            <Trash2 size={18} />
+          </button>
+        </div>
+      );
+    },
   }),
 ];
