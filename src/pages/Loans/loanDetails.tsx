@@ -261,7 +261,7 @@ export default function LoanDetails() {
         </div>
 
         <div className="max-w-full overflow-x-auto overscroll-x-contain">
-          <table className="min-w-[680px] border-collapse border border-gray-200">
+          <table className="min-w-[680px] w-full border-collapse border border-gray-200">
             <thead className="bg-[#006b45] text-left text-sm text-white">
               <tr>
                 <th className="border-r border-white/20 px-4 py-3">Payment Date</th>

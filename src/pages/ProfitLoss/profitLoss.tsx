@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  Wallet,
   Plus,
   Trash2,
   TrendingDown,
@@ -42,6 +43,7 @@ type MonthlySummary = {
   profit: number;
   loss: number;
   net: number;
+  totalCollections: number;
 };
 
 const getMonthlyDescription = (row: MonthlySummary) => {
@@ -130,6 +132,10 @@ const getSavingProfit = (savings: Saving[], selectedMonth: string) => {
   );
 
   return {
+    paymentReceived: monthSavings.reduce(
+      (total, saving) => total + toAmount(saving.paymentReceived),
+      0
+    ),
     fineIn: monthSavings.reduce((total, saving) => total + toAmount(saving.fineIn), 0),
     fineOut: monthSavings.reduce((total, saving) => total + toAmount(saving.fineOut), 0),
     newMember: monthSavings.reduce((total, saving) => total + toAmount(saving.newMember), 0),
@@ -190,11 +196,29 @@ const getLoanProfit = (loans: Loan[], selectedMonth: string) => {
       ),
     0
   );
+  const principalCollected = loans.reduce(
+    (total, loan) =>
+      total +
+      loan.payments.reduce(
+        (paymentTotal, payment) =>
+          getBSMonthKey(payment.paymentDate) === selectedMonth
+            ? paymentTotal + toAmount(payment.amount)
+            : paymentTotal,
+        0
+      ),
+      0
+  );
+  const principalIssued = monthLoans.reduce(
+    (total, loan) => total + toAmount(loan.principalAmount),
+    0
+  );
 
   return {
     fineOut,
     renewal: renewal + renewalWithoutPaymentHistory,
     interest,
+    principalCollected,
+    principalIssued,
   };
 };
 
@@ -258,6 +282,20 @@ function ProfitLoss() {
     const savingProfit = getSavingProfit(savings, monthKey);
     const loanProfit = getLoanProfit(loans, monthKey);
     const investmentGainOrLoss = getInvestmentGainOrLossForMonth(monthKey);
+    const loss = lossEntries
+      .filter((entry) => getBSMonthKey(entry.lossDate) === monthKey)
+      .reduce((total, entry) => total + entry.amount, 0);
+    const totalCollections =
+      savingProfit.newMember +
+      savingProfit.fineOut +
+      savingProfit.paymentReceived +
+      loanProfit.renewal +
+      loanProfit.fineOut +
+      loanProfit.interest +
+      loanProfit.principalCollected +
+      investmentGainOrLoss -
+      loanProfit.principalIssued -
+      loss;
     const profit =
       savingProfit.fineOut +
       savingProfit.newMember +
@@ -265,9 +303,6 @@ function ProfitLoss() {
       loanProfit.interest +
       loanProfit.fineOut +
       investmentGainOrLoss;
-    const loss = lossEntries
-      .filter((entry) => getBSMonthKey(entry.lossDate) === monthKey)
-      .reduce((total, entry) => total + entry.amount, 0);
     const month = monthOptions.find((option) => option.key === monthKey);
 
     return {
@@ -282,6 +317,7 @@ function ProfitLoss() {
       profit,
       loss,
       net: profit - loss,
+      totalCollections,
     };
   };
   const emptySummary: MonthlySummary = {
@@ -296,6 +332,7 @@ function ProfitLoss() {
     profit: 0,
     loss: 0,
     net: 0,
+    totalCollections: 0,
   };
   const annualRows =
     selectedYear === null
@@ -308,6 +345,10 @@ function ProfitLoss() {
   const annualProfit = annualRows.reduce((total, row) => total + row.profit, 0);
   const annualLoss = annualRows.reduce((total, row) => total + row.loss, 0);
   const annualNet = annualProfit - annualLoss;
+  const annualTotalCollections = annualRows.reduce(
+    (total, row) => total + row.totalCollections,
+    0
+  );
   const selectedSummary = selectedMonthKey
     ? getMonthlySummary(selectedMonthKey)
     : selectedYear === null
@@ -324,6 +365,7 @@ function ProfitLoss() {
           profit: annualProfit,
           loss: annualLoss,
           net: annualNet,
+          totalCollections: annualTotalCollections,
         };
   const selectedMonthLabel = selectedMonthKey
     ? monthOptions.find((month) => month.key === selectedMonthKey)?.label ?? selectedMonthKey
@@ -536,7 +578,7 @@ function ProfitLoss() {
         </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <article className="rounded-2xl border border-emerald-100 bg-emerald-50 p-5 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)]">
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm font-medium text-emerald-700">profit</p>
@@ -554,6 +596,23 @@ function ProfitLoss() {
           </div>
           <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-red-700">
             {selectedYear === null ? "Select period" : reportLoading ? "—" : formatCurrency(selectedSummary.loss)}
+          </p>
+        </article>
+
+        <article className="rounded-2xl border border-amber-100 bg-amber-50 p-5 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)]">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-medium text-amber-700">Total Collections</p>
+            <Wallet className="h-5 w-5 text-amber-600" />
+          </div>
+          <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-amber-700">
+            {selectedYear === null
+              ? "Select period"
+              : reportLoading
+                ? "—"
+                : formatCurrency(selectedSummary.totalCollections)}
+          </p>
+          <p className="mt-2 text-xs text-slate-500">
+            After loan disbursements and recorded losses
           </p>
         </article>
 

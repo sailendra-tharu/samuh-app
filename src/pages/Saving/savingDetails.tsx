@@ -181,7 +181,7 @@ export default function SavingDetails() {
         </div>
 
         <div className="max-w-full overflow-x-auto overscroll-x-contain">
-          <table className="min-w-[640px] border-collapse border border-gray-200">
+          <table className="min-w-[640px] w-full border-collapse border border-gray-200">
             <thead className="bg-[#006b45] text-left text-sm text-white">
               <tr>
                 <th className="border-r border-white/20 px-4 py-3">Date</th>
