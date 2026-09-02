@@ -11,7 +11,6 @@ export interface Saving {
   fineIn: number | null;
   fineOut: number | null;
   paymentReceived: number | null;
-  createdAt?: string;
 }
 
 const toSaving = (saving: {
@@ -25,7 +24,6 @@ const toSaving = (saving: {
   fine_in: number | string | null;
   fine_out: number | string | null;
   payment_received: number | string | null;
-  created_at: string | null;
 }): Saving => ({
   id: saving.id,
   memberId: saving.member_id,
@@ -40,7 +38,6 @@ const toSaving = (saving: {
     saving.payment_received === null
       ? null
       : Number(saving.payment_received),
-  createdAt: saving.created_at ?? undefined,
 });
 
 const validateFineAmounts = (fineIn: number | null, fineOut: number | null) => {

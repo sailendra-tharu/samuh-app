@@ -6,7 +6,6 @@ export interface LossEntry {
   category: string;
   amount: number;
   details: string;
-  createdAt?: string;
 }
 
 const toLossEntry = (entry: {
@@ -15,14 +14,12 @@ const toLossEntry = (entry: {
   category: string;
   amount: number | string;
   details: string | null;
-  created_at: string;
 }): LossEntry => ({
   id: entry.id,
   lossDate: entry.loss_date,
   category: entry.category,
   amount: Number(entry.amount),
   details: entry.details ?? "",
-  createdAt: entry.created_at,
 });
 
 export async function getLossEntries() {
