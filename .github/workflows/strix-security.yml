@@ -36,7 +36,6 @@ jobs:
 
       - name: Run Strix
         env:
-          # The model name is not sensitive. A secret or repository variable can
           # override the default when a different provider/model is preferred.
           STRIX_LLM: ${{ secrets.STRIX_LLM || vars.STRIX_LLM || 'openai/gpt-5.4' }}
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
