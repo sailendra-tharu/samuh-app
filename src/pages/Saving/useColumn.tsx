@@ -76,6 +76,11 @@ export const userColumns = (
     cell: ({ getValue }) => formatAmount(getValue()),
   }),
 
+  helper.accessor("bonus", {
+    header: "Bonus",
+    cell: ({ getValue }) => formatAmount(getValue()),
+  }),
+
   helper.display({
     id: "action",
     header: "Action",

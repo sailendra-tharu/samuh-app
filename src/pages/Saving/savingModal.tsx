@@ -56,6 +56,7 @@ const createEmptyForm = (): Saving => ({
   fineIn: null,
   fineOut: 0,
   paymentReceived: null,
+  bonus: null,
 });
 
 export default function SavingForm({
@@ -244,7 +245,7 @@ export default function SavingForm({
             />
           </div>
 
-          <div className="grid gap-5 sm:grid-cols-3">
+          <div className="grid gap-5 sm:grid-cols-2">
             <NumberField
               label="Fine In"
               name="fineIn"
@@ -261,6 +262,12 @@ export default function SavingForm({
               label="Payment Received"
               name="paymentReceived"
               value={form.paymentReceived}
+              onChange={handleChange}
+            />
+            <NumberField
+              label="Bonus"
+              name="bonus"
+              value={form.bonus}
               onChange={handleChange}
             />
           </div>

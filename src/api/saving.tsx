@@ -11,6 +11,7 @@ export interface Saving {
   fineIn: number | null;
   fineOut: number | null;
   paymentReceived: number | null;
+  bonus: number | null;
 }
 
 const toSaving = (saving: {
@@ -24,6 +25,7 @@ const toSaving = (saving: {
   fine_in: number | string | null;
   fine_out: number | string | null;
   payment_received: number | string | null;
+  bonus: number | string | null;
 }): Saving => ({
   id: saving.id,
   memberId: saving.member_id,
@@ -38,6 +40,7 @@ const toSaving = (saving: {
     saving.payment_received === null
       ? null
       : Number(saving.payment_received),
+  bonus: saving.bonus === null ? null : Number(saving.bonus),
 });
 
 const validateFineAmounts = (fineIn: number | null, fineOut: number | null) => {
@@ -168,6 +171,7 @@ export async function createSaving(saving: Saving) {
       fine_in: saving.fineIn,
       fine_out: saving.fineOut,
       payment_received: saving.paymentReceived,
+      bonus: saving.bonus,
     })
     .select()
     .single();
@@ -197,6 +201,7 @@ export async function updateSaving(saving: Saving) {
       fine_in: saving.fineIn,
       fine_out: saving.fineOut,
       payment_received: saving.paymentReceived,
+      bonus: saving.bonus,
     })
     .eq("id", saving.id)
     .select()
