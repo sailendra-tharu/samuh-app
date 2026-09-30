@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import NepaliDate from "nepali-date-converter";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 import type { Loan } from "@/api/loan";
 import type { Saving } from "@/api/saving";
@@ -133,7 +133,6 @@ const getActivityItems = (savings: Saving[], loans: Loan[]) => {
 };
 
 function Dashboard() {
-  const navigate = useNavigate();
   const { role } = useAuth();
   const currentYear = NepaliDate.now().getYear();
   const currentMonth = NepaliDate.now().getMonth();
@@ -237,9 +236,9 @@ function Dashboard() {
       value: members.length.toLocaleString(),
       detail: "Registered in your group",
       icon: Users,
-      iconClass: "bg-[#e7f7ef] text-[#09815a]",
+      iconClass: "bg-[#e7f7ef] text-[#087b55]",
       valueClass: "text-slate-900",
-      accent: "#09815a",
+      accent: "#087b55",
     },
     {
       label: "Total savings",
@@ -247,7 +246,7 @@ function Dashboard() {
       detail: `${formatCurrency(savingsThisMonth)} collected this month`,
       icon: Wallet,
       iconClass: "bg-[#fff4da] text-[#bf7b08]",
-      valueClass: "text-[#09815a]",
+      valueClass: "text-[#087b55]",
       accent: "#bf7b08",
     },
     {
@@ -255,9 +254,9 @@ function Dashboard() {
       value: activeLoans.length.toLocaleString(),
       detail: `${paidLoans.length} loan${paidLoans.length === 1 ? "" : "s"} fully paid`,
       icon: HandCoins,
-      iconClass: "bg-[#eeeaff] text-[#6853c8]",
-      valueClass: "text-[#d6a72c]",
-      accent: "#6853c8",
+      iconClass: "bg-[#eeeaff] text-[#6651c3]",
+      valueClass: "text-slate-900",
+      accent: "#6651c3",
     },
     {
       label: "Outstanding balance",
@@ -377,7 +376,7 @@ function Dashboard() {
                 </select>
               </div>
               <div className="rounded-lg bg-[#e9f8f0] px-3 py-2 text-right">
-                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[#14825e]">
+                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[#087b55]">
                   {isCurrentPeriod ? "This month" : "Selected month"}
                 </p>
                 <p className="mt-0.5 text-sm font-semibold text-[#07583e]">
@@ -484,10 +483,9 @@ function Dashboard() {
               <div className="px-6 py-12 text-center text-sm text-slate-400">No activity recorded yet.</div>
             ) : (
               activityItems.map((item) => (
-                <button
+                <Link
                   key={item.id}
-                  type="button"
-                  onClick={() => navigate(item.type === "saving" ? "/savings" : "/loans")}
+                  to={item.type === "saving" ? "/savings" : "/loans"}
                   className="flex w-full items-center gap-3 px-5 py-4 text-left transition hover:bg-slate-50 sm:px-6"
                 >
                   <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${item.type === "saving" ? "bg-[#e9f8f0] text-[#087b55]" : "bg-[#eeebff] text-[#6651c3]"}`}>
@@ -501,7 +499,7 @@ function Dashboard() {
                     {item.type === "saving" ? "+" : ""}{formatCurrency(item.amount)}
                   </span>
                   <ChevronRight className="hidden h-4 w-4 shrink-0 text-slate-300 sm:block" />
-                </button>
+                </Link>
               ))
             )}
           </div>
@@ -522,7 +520,7 @@ function Dashboard() {
             ) : (
               topContributors.map((contributor, index) => (
                 <div key={contributor.name} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                  <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl text-xs font-bold ${index === 0 ? "bg-[#fff4da] text-[#b47709]" : "bg-[#e9f8f0] text-[#087b55]"}`}>
+                  <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl text-xs font-bold ${index === 0 ? "bg-[#fff4da] text-[#bf7b08]" : "bg-[#e9f8f0] text-[#087b55]"}`}>
                     {contributor.name.slice(0, 2).toUpperCase()}
                   </span>
                   <div className="min-w-0 flex-1">
@@ -535,14 +533,13 @@ function Dashboard() {
             )}
           </div>
 
-          <button
-            type="button"
-            onClick={() => navigate("/members")}
+          <Link
+            to="/members"
             className="mt-6 flex w-full items-center justify-between border-t border-slate-100 pt-4 text-sm font-semibold text-[#087b55] transition hover:text-[#07583e]"
           >
             View all members
             <ChevronRight className="h-4 w-4" />
-          </button>
+          </Link>
         </article>
       </section>
 

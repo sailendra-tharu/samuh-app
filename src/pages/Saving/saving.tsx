@@ -328,7 +328,7 @@ function Savings() {
             setSaveError("");
             setOpen(true);
           }}
-          className="flex w-full items-center justify-center gap-2 rounded-md bg-green-700 px-4 py-2 text-white hover:bg-green-800 sm:w-auto"
+          className="flex w-full items-center justify-center gap-2 rounded-md border border-green-700 bg-green-700 px-4 py-2 text-white transition hover:bg-green-800 sm:w-auto"
         >
           <PlusIcon className="h-4 w-4" />
           Add Saving
@@ -337,7 +337,7 @@ function Savings() {
           type="button"
           onClick={exportSavings}
           disabled={displaySavings.length === 0}
-          className="flex w-full items-center justify-center gap-2 rounded-md border border-green-700 px-4 py-2 text-green-700 hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+          className="flex w-full items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
         >
           <Download className="h-4 w-4" />
           Export PDF

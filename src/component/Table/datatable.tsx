@@ -465,7 +465,7 @@ function DataTable<TData>({
                 }
 
 
-                className={`rounded-md border px-3 py-1 text-sm transition ${table.getState().pagination.pageIndex === pageIndex ? "bg-[#006b45] text-white border-[#006b45]" : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"}`}
+                className={`rounded-md border px-3 py-1 text-sm transition ${table.getState().pagination.pageIndex === pageIndex ? "bg-green-700 text-white border-green-700" : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"}`}
 
               >
 

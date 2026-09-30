@@ -131,7 +131,7 @@ function Layout() {
           </div>
 
           <div className="flex items-center gap-4">
-            <button className="relative rounded-xl border border-slate-200 bg-white p-2.5 text-slate-600 transition hover:bg-slate-50" aria-label="Notifications">
+            <button className="relative rounded-xl p-2.5 text-slate-600 transition hover:bg-slate-50" aria-label="Notifications">
               <Bell size={20} />
               <span className="absolute -right-1 -top-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#e66b54] text-[10px] font-semibold text-white">
                 3
@@ -228,14 +228,6 @@ function ProfileMenu({
 
       {isOpen && (
         <div className="absolute right-0 top-full z-50 mt-2 w-48 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_16px_35px_-18px_rgba(15,23,42,0.45)]">
-          <div className="border-b border-slate-100 px-2.5 py-2">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-              Signed in as
-            </p>
-            <p className="mt-0.5 truncate text-sm font-semibold text-slate-800">
-              {role === "admin" ? "Admin" : "Member"}
-            </p>
-          </div>
           {isAdmin && (
             <button
               type="button"

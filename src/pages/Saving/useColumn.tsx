@@ -92,36 +92,39 @@ export const userColumns = (
         <div className="flex items-center gap-2">
           <button
             type="button"
-            className="rounded-md p-2 text-green-600 hover:bg-green-100"
+            className="rounded-md p-2 text-slate-600 transition hover:bg-slate-100 hover:text-green-700"
             onClick={(event) => {
               event.stopPropagation();
               onAddNextSaving(row.index);
             }}
             title="Add next month saving"
+            aria-label="Add next month saving"
           >
             <Plus size={18} />
           </button>
 
           <button
             type="button"
-            className="rounded-md p-2 text-blue-600 hover:bg-blue-100"
+            className="rounded-md p-2 text-slate-600 transition hover:bg-slate-100 hover:text-blue-700"
             onClick={(event) => {
               event.stopPropagation();
               onEdit(row.index);
             }}
             title="Edit"
+            aria-label="Edit saving"
           >
             <Pencil size={18} />
           </button>
 
           <button
             type="button"
-            className="rounded-md p-2 text-red-600 hover:bg-red-100"
+            className="rounded-md p-2 text-slate-600 transition hover:bg-slate-100 hover:text-red-600"
             onClick={(event) => {
               event.stopPropagation();
               onDelete(row.index);
             }}
             title="Delete"
+            aria-label="Delete saving"
           >
             <Trash2 size={18} />
           </button>

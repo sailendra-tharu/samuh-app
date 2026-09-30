@@ -119,7 +119,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
             </div>
 
             <div className="min-w-0">
-              <h1 className="truncate text-sm font-bold tracking-[0.12em]">HAMRO SAMUH</h1>
+              <p className="truncate text-sm font-bold tracking-[0.12em]">HAMRO SAMUH</p>
               <p className="mt-0.5 text-[11px] text-emerald-100/60">Together we grow</p>
             </div>
           </div>
@@ -174,10 +174,10 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
             </div>
 
             <div className="min-w-0 flex-1">
-              <h3 className="truncate text-sm font-semibold">
+              <p className="truncate text-sm font-semibold">
                 {role === "admin" ? "Admin" : "Member"}
-              </h3>
-              <p className="truncate text-xs text-emerald-100/55">
+              </p>
+              <p className="truncate text-xs text-emerald-100/60">
                 {role === "admin" ? "Administrator" : "Member account"}
               </p>
             </div>
@@ -185,7 +185,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
 
           <button
             onClick={handleLogout}
-            className="mt-2 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-emerald-50/70 transition hover:bg-white/10 hover:text-white"
+            className="mt-2 flex w-full cursor-pointer items-center gap-3 rounded-xl px-3.5 py-3 text-sm text-emerald-50/75 transition hover:bg-white/10 hover:text-white"
           >
             <LogOut size={18} />
             Logout
