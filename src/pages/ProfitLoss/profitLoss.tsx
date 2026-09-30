@@ -15,6 +15,7 @@ import type { Saving } from "@/api/saving";
 import Pagination from "@/component/Pagination/pagination";
 import Loader from "@/component/Loader/loader";
 import { useInvestments } from "@/hook/investment";
+import { useInvestmentFundIssues } from "@/hook/investmentFund";
 import { useLossEntries } from "@/hook/loss";
 import { useLoans } from "@/hook/loan";
 import { useSavings } from "@/hook/saving";
@@ -198,29 +199,10 @@ const getLoanProfit = (loans: Loan[], selectedMonth: string) => {
       ),
     0
   );
-  const principalCollected = loans.reduce(
-    (total, loan) =>
-      total +
-      loan.payments.reduce(
-        (paymentTotal, payment) =>
-          getBSMonthKey(payment.paymentDate) === selectedMonth
-            ? paymentTotal + toAmount(payment.amount)
-            : paymentTotal,
-        0
-      ),
-      0
-  );
-  const principalIssued = monthLoans.reduce(
-    (total, loan) => total + toAmount(loan.principalAmount),
-    0
-  );
-
   return {
     fineOut,
     renewal: renewal + renewalWithoutPaymentHistory,
     interest,
-    principalCollected,
-    principalIssued,
   };
 };
 
@@ -245,6 +227,8 @@ function ProfitLoss() {
     isLoading: investmentsLoading,
     error: investmentsError,
   } = useInvestments();
+  const { issues: fundIssues, isLoading: fundIssuesLoading } =
+    useInvestmentFundIssues();
   {
     /* lossEntries */
   }
@@ -258,10 +242,14 @@ function ProfitLoss() {
     isDeleting,
   } = useLossEntries();
   const isLoading =
-    savingsLoading || loansLoading || investmentsLoading;
+    savingsLoading || loansLoading || investmentsLoading || fundIssuesLoading;
   const reportLoading = isLoading || lossLoading;
   const outstandingLoanPrincipal = loans.reduce(
     (total, loan) => total + (loan.remainingPrincipal ?? 0),
+    0
+  );
+  const totalFundsIssued = fundIssues.reduce(
+    (total, issue) => total + toAmount(issue.amount),
     0
   );
   const totalLoanIssued = loans.reduce(
@@ -359,7 +347,10 @@ function ProfitLoss() {
 
         return {
           ...monthSummary,
-          netCollection: monthSummary.netCollection - outstandingLoanPrincipal,
+          netCollection:
+            monthSummary.netCollection -
+            outstandingLoanPrincipal -
+            totalFundsIssued,
         };
       })()
     : selectedYear === null
@@ -379,7 +370,8 @@ function ProfitLoss() {
           totalCollections: annualTotalCollections,
           netCollection:
             annualRows.reduce((total, row) => total + row.netCollection, 0) -
-            outstandingLoanPrincipal,
+            outstandingLoanPrincipal -
+            totalFundsIssued,
         };
   const selectedMonthLabel = selectedMonthKey
     ? monthOptions.find((month) => month.key === selectedMonthKey)?.label ?? selectedMonthKey
@@ -505,6 +497,9 @@ function ProfitLoss() {
     }
   };
 
+  // One loader for the whole page until its data arrives.
+  if (reportLoading) return <Loader variant="page" />;
+
   return (
     <div className="mx-auto min-w-0 w-full max-w-[1480px] space-y-5 pb-8 sm:space-y-6">
       <section className="relative overflow-hidden rounded-2xl bg-[#103f34] px-4 py-5 text-white shadow-[0_18px_45px_-24px_rgba(16,63,52,0.8)] sm:rounded-[28px] sm:px-8 sm:py-8">
@@ -600,7 +595,7 @@ function ProfitLoss() {
             <TrendingUp className="h-5 w-5 text-emerald-600" />
           </div>
           <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-emerald-700">
-            {selectedYear === null ? "Select period" : isLoading ? "—" : formatCurrency(selectedSummary.profit)}
+            {selectedYear === null ? "Select period" : formatCurrency(selectedSummary.profit)}
           </p>
         </article>
 
@@ -610,7 +605,7 @@ function ProfitLoss() {
             <TrendingDown className="h-5 w-5 text-red-500" />
           </div>
           <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-red-700">
-            {selectedYear === null ? "Select period" : reportLoading ? "—" : formatCurrency(selectedSummary.loss)}
+            {selectedYear === null ? "Select period" : formatCurrency(selectedSummary.loss)}
           </p>
         </article>
 
@@ -620,7 +615,7 @@ function ProfitLoss() {
             <Wallet className="h-5 w-5 text-sky-600" />
           </div>
           <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-sky-700">
-            {loansLoading ? "—" : formatCurrency(outstandingLoanPrincipal)}
+            {formatCurrency(outstandingLoanPrincipal)}
           </p>
           <p className="mt-2 text-xs text-slate-500">
             All loans after principal repayments
@@ -633,10 +628,23 @@ function ProfitLoss() {
             <Wallet className="h-5 w-5 text-violet-600" />
           </div>
           <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-violet-700">
-            {loansLoading ? "—" : formatCurrency(totalLoanIssued)}
+            {formatCurrency(totalLoanIssued)}
           </p>
           <p className="mt-2 text-xs text-slate-500">
             Principal issued across all loans
+          </p>
+        </article>
+
+        <article className="rounded-2xl border border-orange-100 bg-orange-50 p-5 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)]">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-medium text-orange-700">Investment Funds Issued</p>
+            <Wallet className="h-5 w-5 text-orange-600" />
+          </div>
+          <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-orange-700">
+            {formatCurrency(totalFundsIssued)}
+          </p>
+          <p className="mt-2 text-xs text-slate-500">
+            Funds issued across all investment fund issues
           </p>
         </article>
 
@@ -648,9 +656,7 @@ function ProfitLoss() {
           <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-amber-700">
             {selectedYear === null
               ? "Select period"
-              : reportLoading
-                ? "—"
-                : formatCurrency(selectedSummary.totalCollections)}
+              : formatCurrency(selectedSummary.totalCollections)}
           </p>
           <p className="mt-2 text-xs text-slate-500">
             Profit plus saving payment received
@@ -665,12 +671,10 @@ function ProfitLoss() {
           <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-teal-700">
             {selectedYear === null
               ? "Select period"
-              : reportLoading
-                ? "—"
-                : formatCurrency(selectedSummary.netCollection)}
+              : formatCurrency(selectedSummary.netCollection)}
           </p>
           <p className="mt-2 text-xs text-slate-500">
-            Total Collection after recorded losses and outstanding loan principal deduction
+            Total Collection after recorded losses, outstanding loan principal and issued investment funds deduction
           </p>
         </article>
 
@@ -711,25 +715,19 @@ function ProfitLoss() {
                 <tr key={row.key} className={row.key === selectedMonthKey ? "bg-emerald-50/60" : undefined}>
                   <td className="px-5 py-4 font-medium text-slate-800 sm:px-6">{row.label}</td>
                   <td className="px-5 py-4 text-xs leading-5 text-slate-500">
-                    {reportLoading ? (
-                      <Loader />
-                    ) : (
-                      <>
-                        <p><span className="font-semibold text-[#087b55]">Profit:</span> {getMonthlyDescription(row).profit}</p>
-                        <p><span className="font-semibold text-red-600">Loss:</span> {getMonthlyDescription(row).loss}</p>
-                      </>
-                    )}
+                    <p><span className="font-semibold text-[#087b55]">Profit:</span> {getMonthlyDescription(row).profit}</p>
+                    <p><span className="font-semibold text-red-600">Loss:</span> {getMonthlyDescription(row).loss}</p>
                   </td>
-                  <td className="px-5 py-4 text-right text-slate-700">{isLoading ? "—" : formatCurrency(row.fineIn)}</td>
-                  <td className="px-5 py-4 text-right text-slate-700">{isLoading ? "—" : formatCurrency(row.fineOut)}</td>
-                  <td className="px-5 py-4 text-right text-slate-700">{isLoading ? "—" : formatCurrency(row.newMember)}</td>
-                <td className="px-5 py-4 text-right text-slate-700">{isLoading ? "—" : formatCurrency(row.renewal)}</td>
-                  <td className="px-5 py-4 text-right text-slate-700">{isLoading ? "—" : formatCurrency(row.interest)}</td>
-                  <td className={`px-5 py-4 text-right font-semibold ${row.investmentGainOrLoss >= 0 ? "text-[#087b55]" : "text-red-600"}`}>{reportLoading ? "—" : formatCurrency(row.investmentGainOrLoss)}</td>
-                  <td className="px-5 py-4 text-right font-semibold text-[#087b55]">{isLoading ? "—" : formatCurrency(row.profit)}</td>
-                  <td className="px-5 py-4 text-right font-semibold text-red-600">{reportLoading ? "—" : formatCurrency(row.loss)}</td>
+                  <td className="px-5 py-4 text-right text-slate-700">{formatCurrency(row.fineIn)}</td>
+                  <td className="px-5 py-4 text-right text-slate-700">{formatCurrency(row.fineOut)}</td>
+                  <td className="px-5 py-4 text-right text-slate-700">{formatCurrency(row.newMember)}</td>
+                <td className="px-5 py-4 text-right text-slate-700">{formatCurrency(row.renewal)}</td>
+                  <td className="px-5 py-4 text-right text-slate-700">{formatCurrency(row.interest)}</td>
+                  <td className={`px-5 py-4 text-right font-semibold ${row.investmentGainOrLoss >= 0 ? "text-[#087b55]" : "text-red-600"}`}>{formatCurrency(row.investmentGainOrLoss)}</td>
+                  <td className="px-5 py-4 text-right font-semibold text-[#087b55]">{formatCurrency(row.profit)}</td>
+                  <td className="px-5 py-4 text-right font-semibold text-red-600">{formatCurrency(row.loss)}</td>
                   <td className={`px-5 py-4 text-right font-semibold sm:px-6 ${row.net >= 0 ? "text-[#087b55]" : "text-red-600"}`}>
-                    {reportLoading ? "—" : formatCurrency(row.net)}
+                    {formatCurrency(row.net)}
                   </td>
                 </tr>
               ))}

@@ -1,5 +1,5 @@
 import { createColumnHelper } from "@tanstack/react-table";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, PencilLine, Plus, Trash2 } from "lucide-react";
 
 import {
   getInvestmentGainOrLoss,
@@ -17,6 +17,7 @@ export const userColumns = (
   onEdit: (index: number) => void,
   onDelete: (index: number) => void,
   onAddReturn: (index: number) => void,
+  onEditReturn: (index: number) => void,
   canWrite = true
 ) => [
   helper.display({
@@ -39,8 +40,8 @@ export const userColumns = (
     cell: ({ getValue }) => formatAmount(getValue()),
   }),
 
-  helper.accessor("currentValue", {
-    header: "Current Value",
+  helper.accessor("charge", {
+    header: "Charge",
     cell: ({ getValue }) => formatAmount(getValue()),
   }),
 
@@ -77,16 +78,27 @@ export const userColumns = (
     header: "Status",
     cell: ({ getValue }) => {
       const status = getValue();
-      const label = status.charAt(0).toUpperCase() + status.slice(1);
+      const labelMap: Record<string, string> = {
+        verify: "Verify",
+        alloted: "Alloted",
+        "not-alloted": "Not Alloted",
+        rejected: "Rejected",
+        sold: "Sold",
+      };
+      const label = labelMap[status] ?? status;
 
       return (
         <span
           className={
-            status === "active"
+            status === "verify"
               ? "font-medium text-amber-600"
-              : status === "completed"
+              : status === "alloted"
                 ? "font-medium text-green-600"
-                : "font-medium text-blue-600"
+                : status === "not-alloted"
+                  ? "font-medium text-red-600"
+                  : status === "rejected"
+                    ? "font-medium text-rose-600"
+                    : "font-medium text-blue-600"
           }
         >
           {label}
@@ -114,6 +126,18 @@ export const userColumns = (
             title="Record Return"
           >
             <Plus size={18} />
+          </button>
+
+          <button
+            type="button"
+            className="rounded-md p-2 text-amber-600 hover:bg-amber-100"
+            onClick={(event) => {
+              event.stopPropagation();
+              onEditReturn(row.index);
+            }}
+            title="Edit Return"
+          >
+            <PencilLine size={18} />
           </button>
 
           <button

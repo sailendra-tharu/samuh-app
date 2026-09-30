@@ -18,6 +18,7 @@ import {
   type MemberSectionPermissions,
   type SectionKey,
 } from "@/lib/access";
+import Loader from "@/component/Loader/loader";
 
 const iconBySection: Record<SectionKey, LucideIcon> = {
   dashboard: LayoutDashboard,
@@ -79,6 +80,9 @@ function AccessControl() {
     }
   };
 
+  // One loader for the whole page until its data arrives.
+  if (isLoading) return <Loader variant="page" />;
+
   return (
     <div className="mx-auto w-full max-w-5xl space-y-5 pb-8 sm:space-y-6">
       <section className="overflow-hidden rounded-2xl bg-[#103f34] px-4 py-5 text-white shadow-[0_18px_45px_-24px_rgba(16,63,52,0.8)] sm:rounded-[28px] sm:px-8 sm:py-8">
@@ -112,7 +116,7 @@ function AccessControl() {
           <button
             type="button"
             onClick={() => void handleSave()}
-            disabled={isLoading || !!error || !hasChanges || saveMutation.isPending}
+            disabled={!!error || !hasChanges || saveMutation.isPending}
             className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#087b55] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#07583e] disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto"
           >
             <Save className="h-4 w-4" />

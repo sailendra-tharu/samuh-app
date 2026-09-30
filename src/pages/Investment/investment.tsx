@@ -7,6 +7,7 @@ import {
   PlusIcon,
   Search,
   Trash2,
+  TrendingDown,
   TrendingUp,
   Wallet,
 } from "lucide-react";
@@ -49,8 +50,7 @@ const getErrorMessage = (error: unknown, fallback: string) => {
   return fallback;
 };
 
-const getCurrentValue = (investment: Investment) =>
-  investment.currentValue ?? 0;
+const getCharge = (investment: Investment) => investment.charge ?? 0;
 
 const formatIssueDate = (dateString: string) => {
   const date = new Date(`${dateString}T00:00:00Z`);
@@ -86,6 +86,7 @@ function Investment() {
   const [issueFundsError, setIssueFundsError] = useState("");
   const [fundIssueDeleteError, setFundIssueDeleteError] = useState("");
   const [returnError, setReturnError] = useState("");
+  const [returnMode, setReturnMode] = useState<"add" | "edit">("add");
   const [deleteError, setDeleteError] = useState("");
   const { canWrite } = useSectionAccess();
   const canWriteInvestments = canWrite("investment");
@@ -133,20 +134,33 @@ function Investment() {
     (total, investment) => total + (investment.investedAmount ?? 0),
     0
   );
-  const currentValue = investments.reduce(
-    (total, investment) => total + getCurrentValue(investment),
+  const totalCharge = investments.reduce(
+    (total, investment) => total + getCharge(investment),
+    0
+  );
+  // Only investments still under verification hold money; for every other
+  // status the invested amount has come back to the available funds.
+  const investedAmountOnHold = investments.reduce(
+    (total, investment) =>
+      investment.status === "verify"
+        ? total + (investment.investedAmount ?? 0)
+        : total,
     0
   );
   const availableInvestmentFunds = Math.max(
-    totalFundsIssued - totalInvested,
+    totalFundsIssued - investedAmountOnHold - totalCharge,
     0
   );
   const totalReturned = investments.reduce(
     (total, investment) => total + investment.returnValue,
     0
   );
+  const totalProfit = investments.reduce(
+    (total, investment) => total + (getInvestmentGainOrLoss(investment) ?? 0),
+    0
+  );
   const activeInvestments = investments.filter(
-    (investment) => investment.status === "active"
+    (investment) => investment.status === "verify" || investment.status === "alloted"
   ).length;
 
   const exportInvestments = () => {
@@ -159,7 +173,7 @@ function Investment() {
         "Type",
         "Status",
         "Invested Amount",
-        "Current Value",
+        "Charge",
         "Returned",
         "Gain / Loss",
       ],
@@ -168,7 +182,7 @@ function Investment() {
         investment.type,
         investment.status,
         investment.investedAmount ?? 0,
-        getCurrentValue(investment),
+        getCharge(investment),
         investment.returnValue,
         getInvestmentGainOrLoss(investment) ?? 0,
       ])
@@ -299,6 +313,19 @@ function Investment() {
     if (!investment) return;
 
     setReturnError("");
+    setReturnMode("add");
+    setReturnInvestment(investment);
+  };
+
+  const handleEditReturn = (index: number) => {
+    if (!canWriteInvestments) return;
+
+    const investment = displayInvestments[index];
+
+    if (!investment) return;
+
+    setReturnError("");
+    setReturnMode("edit");
     setReturnInvestment(investment);
   };
 
@@ -310,7 +337,10 @@ function Investment() {
     try {
       await updateInvestment({
         ...returnInvestment,
-        returnValue: returnInvestment.returnValue + amount,
+        returnValue:
+          returnMode === "edit"
+            ? amount
+            : returnInvestment.returnValue + amount,
       });
       setReturnInvestment(null);
     } catch (error) {
@@ -376,15 +406,15 @@ function Investment() {
     {
       label: "Available to invest",
       value: formatCurrency(availableInvestmentFunds),
-      detail: "Remaining funds for another investment",
+      detail: "Funds issued minus amounts under verification and charges",
       icon: CircleDollarSign,
       iconClass: "bg-[#e8f3ff] text-[#3679c9]",
       accent: "#3679c9",
     },
     {
-      label: "Current value",
-      value: formatCurrency(currentValue),
-      detail: "Latest recorded value of investments",
+      label: "Total charge",
+      value: formatCurrency(totalCharge),
+      detail: "Charges recorded across investments",
       icon: CircleDollarSign,
       iconClass: "bg-[#e8f3ff] text-[#3679c9]",
       accent: "#3679c9",
@@ -398,6 +428,17 @@ function Investment() {
       accent: "#09815a",
     },
     {
+      label: totalProfit < 0 ? "Total loss" : "Total profit",
+      value: formatCurrency(totalProfit),
+      detail: "Returned minus invested amount and charges",
+      icon: totalProfit < 0 ? TrendingDown : TrendingUp,
+      iconClass:
+        totalProfit < 0
+          ? "bg-[#fdecec] text-[#c93636]"
+          : "bg-[#e7f7ef] text-[#09815a]",
+      accent: totalProfit < 0 ? "#c93636" : "#09815a",
+    },
+    {
       label: "Active investments",
       value: activeInvestments.toLocaleString(),
       detail: "Investments still being held",
@@ -406,6 +447,9 @@ function Investment() {
       accent: "#bf7b08",
     },
   ] as const;
+
+  // One loader for the whole page until investments and fund issues arrive.
+  if (isLoading) return <Loader variant="page" />;
 
   return (
     <div className="mx-auto min-w-0 w-full max-w-[1480px] space-y-5 pb-8 sm:space-y-6">
@@ -447,7 +491,7 @@ function Investment() {
                 <div>
                   <p className="text-sm font-medium text-slate-500">{stat.label}</p>
                   <p className="mt-3 text-[27px] font-semibold tracking-[-0.04em] text-slate-900">
-                    {isLoading ? "—" : stat.value}
+                    {stat.value}
                   </p>
                 </div>
                 <span className={`rounded-xl p-3 ${stat.iconClass}`}>
@@ -485,10 +529,6 @@ function Investment() {
         {fundIssuesError ? (
           <div className="px-5 py-6 text-sm text-red-700 sm:px-6">
             Unable to load issue history: {getErrorMessage(fundIssuesError, "Unknown error")}
-          </div>
-        ) : fundIssuesLoading ? (
-          <div className="px-5 py-8 sm:px-6">
-            <Loader />
           </div>
         ) : investmentFundIssues.length === 0 ? (
           <p className="px-5 py-8 text-center text-sm text-slate-500 sm:px-6">
@@ -558,7 +598,7 @@ function Investment() {
           <div>
             <h3 className="text-base font-semibold text-slate-900">Portfolio records</h3>
             <p className="mt-1 text-sm text-slate-500">
-              Review invested capital, current value, and returns in one place.
+              Review invested capital, charges, and returns in one place.
             </p>
           </div>
 
@@ -585,8 +625,10 @@ function Investment() {
               aria-label="Investment status"
             >
               <option value="all">All statuses</option>
-              <option value="active">Active</option>
-              <option value="completed">Completed</option>
+              <option value="verify">Verify</option>
+              <option value="alloted">Alloted</option>
+              <option value="not-alloted">Not Alloted</option>
+              <option value="rejected">Rejected</option>
               <option value="sold">Sold</option>
             </select>
 
@@ -630,10 +672,11 @@ function Investment() {
               editInvestment,
               handleDeleteClick,
               handleAddReturn,
+              handleEditReturn,
               canWriteInvestments
             )}
             data={displayInvestments}
-            isLoading={search.trim() ? isSearching : isLoading}
+            isLoading={search.trim() !== "" && isSearching}
             loader={<Loader />}
           />
         )}
@@ -690,13 +733,19 @@ function Investment() {
       <Modal
         isOpen={returnInvestment !== null}
         onClose={closeReturn}
-        title="Record Investment Return"
+        title={
+          returnMode === "edit"
+            ? "Edit Investment Return"
+            : "Record Investment Return"
+        }
         bodyClassName="max-h-[70vh]"
         bodyScrollable
       >
         {returnInvestment && (
           <ReturnForm
+            key={`${returnMode}-${returnInvestment.id}`}
             investment={returnInvestment}
+            mode={returnMode}
             onSubmit={saveReturn}
             onCancel={closeReturn}
             error={returnError}

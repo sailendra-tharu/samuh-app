@@ -11,7 +11,6 @@ import {
   deleteLoan,
   getLoans,
   getLoanById,
-  renewLoan,
   searchLoans,
   updateLoan,
   type Loan,
@@ -65,13 +64,6 @@ export function useLoans() {
     },
   });
 
-  const renewalMutation = useMutation({
-    mutationFn: renewLoan,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["loans"] });
-    },
-  });
-
   return {
     loans: loansQuery.data ?? [],
     isLoading: loansQuery.isLoading,
@@ -80,8 +72,6 @@ export function useLoans() {
     updateLoan: updateMutation.mutateAsync,
     deleteLoan: deleteMutation.mutateAsync,
     createLoanPayment: paymentMutation.mutateAsync,
-    renewLoan: renewalMutation.mutateAsync,
-    isRenewing: renewalMutation.isPending,
     isDeleting: deleteMutation.isPending,
   };
 }
@@ -118,21 +108,5 @@ export function useLoanDetails(loanId?: number) {
     loan: loanQuery.data ?? null,
     isLoading: loanQuery.isLoading,
     error: loanQuery.error,
-  };
-}
-
-export function useRenewLoan() {
-  const queryClient = useQueryClient();
-
-  const renewalMutation = useMutation({
-    mutationFn: renewLoan,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["loans"] });
-    },
-  });
-
-  return {
-    renewLoan: renewalMutation.mutateAsync,
-    isRenewing: renewalMutation.isPending,
   };
 }

@@ -266,6 +266,9 @@ function Savings() {
     setSaveError("");
   };
 
+  // One loader for the whole page until its data arrives.
+  if (isLoading) return <Loader variant="page" />;
+
   return (
     <>
       {deleteError && (
@@ -349,7 +352,7 @@ function Savings() {
           canWriteSavings
         )}
         data={displaySavings}
-        isLoading={search.trim() ? isSearching : isLoading}
+        isLoading={search.trim() !== "" && isSearching}
         loader={<Loader />}
         onRowClick={(saving) => {
           if (saving.memberId !== null) {

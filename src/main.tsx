@@ -13,11 +13,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <Suspense
-        fallback={
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white">
-            <Loader />
-          </div>
-        }
+        fallback={<Loader variant="screen" />}
       >
         <RouterProvider router={router} />
       </Suspense>

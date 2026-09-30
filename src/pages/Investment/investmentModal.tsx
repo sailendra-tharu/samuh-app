@@ -13,9 +13,9 @@ const createEmptyForm = (): Investment => ({
   name: "",
   type: "",
   investedAmount: null,
-  currentValue: null,
+  charge: null,
   returnValue: 0,
-  status: "active",
+  status: "verify",
 });
 
 const investmentTypes = [
@@ -37,8 +37,6 @@ export default function InvestmentForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    // Reset the form when the modal switches between add and edit modes.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm(initialData ?? createEmptyForm());
   }, [initialData]);
 
@@ -60,7 +58,7 @@ export default function InvestmentForm({
     setIsSubmitting(true);
 
     try {
-      await onSubmit(form);
+      await onSubmit({ ...form, returnValue: form.returnValue ?? 0 });
       setForm(createEmptyForm());
     } catch {
       // The parent displays the error and keeps the form open.
@@ -121,8 +119,10 @@ export default function InvestmentForm({
             }
             className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
           >
-            <option value="active">Active</option>
-            <option value="completed">Completed</option>
+            <option value="verify">Verify</option>
+            <option value="alloted">Alloted</option>
+            <option value="not-alloted">Not Alloted</option>
+            <option value="rejected">Rejected</option>
             <option value="sold">Sold</option>
           </select>
         </div>
@@ -137,12 +137,20 @@ export default function InvestmentForm({
           required
         />
         <NumberField
-          label="Current Value"
-          name="currentValue"
-          value={form.currentValue}
+          label="Charge"
+          name="charge"
+          value={form.charge}
           onChange={handleChange}
           required
         />
+        {initialData?.id !== undefined && (
+          <NumberField
+            label="Total Returned"
+            name="returnValue"
+            value={form.returnValue}
+            onChange={handleChange}
+          />
+        )}
       </div>
 
       {error && (

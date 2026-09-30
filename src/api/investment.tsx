@@ -1,13 +1,18 @@
 import { supabase } from "@/lib/supabase";
 
-export type InvestmentStatus = "active" | "completed" | "sold";
+export type InvestmentStatus =
+  | "verify"
+  | "alloted"
+  | "not-alloted"
+  | "rejected"
+  | "sold";
 
 export interface Investment {
   id?: string;
   name: string;
   type: string;
   investedAmount: number | null;
-  currentValue: number | null;
+  charge: number | null;
   returnValue: number;
   status: InvestmentStatus;
 }
@@ -17,7 +22,7 @@ type RawInvestment = {
   name: string;
   type: string;
   invested_amount: number | string | null;
-  current_value: number | string | null;
+  charge: number | string | null;
   return_value: number | string | null;
   status: string | null;
 };
@@ -26,9 +31,20 @@ const toNumberOrNull = (value: number | string | null | undefined) =>
   value === null || value === undefined ? null : Number(value);
 
 const toStatus = (value: string | null): InvestmentStatus => {
-  if (value === "completed" || value === "sold") return value;
+  if (
+    value === "verify" ||
+    value === "alloted" ||
+    value === "not-alloted" ||
+    value === "rejected" ||
+    value === "sold"
+  ) {
+    return value;
+  }
 
-  return "active";
+  if (value === "active") return "verify";
+  if (value === "completed") return "rejected";
+
+  return "verify";
 };
 
 const toInvestment = (investment: RawInvestment): Investment => ({
@@ -36,20 +52,23 @@ const toInvestment = (investment: RawInvestment): Investment => ({
   name: investment.name,
   type: investment.type,
   investedAmount: toNumberOrNull(investment.invested_amount),
-  currentValue: toNumberOrNull(investment.current_value),
+  charge: toNumberOrNull(investment.charge),
   returnValue: toNumberOrNull(investment.return_value) ?? 0,
   status: toStatus(investment.status),
 });
 
 export const getInvestmentGainOrLoss = (investment: Investment) => {
-  if (investment.investedAmount === null) return null;
+  // Until money comes back, the invested amount is already covered by the
+  // issued funds, so there is no gain or loss to report yet.
+  if (investment.investedAmount === null || investment.returnValue <= 0) {
+    return null;
+  }
 
-  const value =
-    investment.returnValue > 0
-      ? investment.returnValue
-      : investment.currentValue;
-
-  return value === null ? null : value - investment.investedAmount;
+  return (
+    investment.returnValue -
+    investment.investedAmount -
+    (investment.charge ?? 0)
+  );
 };
 
 const validateInvestment = (investment: Investment) => {
@@ -70,11 +89,11 @@ const validateInvestment = (investment: Investment) => {
   }
 
   if (
-    investment.currentValue === null ||
-    !Number.isFinite(investment.currentValue) ||
-    investment.currentValue < 0
+    investment.charge === null ||
+    !Number.isFinite(investment.charge) ||
+    investment.charge < 0
   ) {
-    throw new Error("Current value must be a valid non-negative number.");
+    throw new Error("Charge must be a valid non-negative number.");
   }
 
   if (
@@ -105,7 +124,7 @@ export async function createInvestment(investment: Investment) {
       name: investment.name.trim(),
       type: investment.type.trim(),
       invested_amount: investment.investedAmount,
-      current_value: investment.currentValue,
+      charge: investment.charge,
       return_value: investment.returnValue,
       status: investment.status,
     })
@@ -130,7 +149,7 @@ export async function updateInvestment(investment: Investment) {
       name: investment.name.trim(),
       type: investment.type.trim(),
       invested_amount: investment.investedAmount,
-      current_value: investment.currentValue,
+      charge: investment.charge,
       return_value: investment.returnValue,
       status: investment.status,
     })

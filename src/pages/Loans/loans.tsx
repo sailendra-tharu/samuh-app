@@ -239,6 +239,9 @@ function Loans() {
     setSaveError("");
   };
 
+  // One loader for the whole page until its data arrives.
+  if (isLoading) return <Loader variant="page" />;
+
   return (
     <>
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
@@ -326,7 +329,7 @@ function Loans() {
             canWriteLoans
           )}
           data={displayLoans}
-          isLoading={search.trim() ? isSearching : isLoading}
+          isLoading={search.trim() !== "" && isSearching}
           loader={<Loader />}
           onRowClick={(loan) => {
             if (loan.id !== undefined) {

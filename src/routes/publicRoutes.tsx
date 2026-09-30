@@ -12,7 +12,7 @@ export default function PublicRoute({ children }: Props) {
   const { loading, isAuthenticated } = useAuth();
 
   if (loading) {
-    return <Loader />;
+    return <Loader variant="screen" />;
   }
 
   if (isAuthenticated) {

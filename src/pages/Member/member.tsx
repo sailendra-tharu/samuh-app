@@ -47,6 +47,7 @@ function Member() {
         updateMember,
         deleteMember,
         isDeleting,
+        isLoading,
     } = useMembers();
 
 
@@ -168,6 +169,9 @@ function Member() {
 
 
 
+
+    // One loader for the whole page until its data arrives.
+    if (isLoading) return <Loader variant="page" />;
 
     return (
 
@@ -336,7 +340,7 @@ function Member() {
                 data={displayMembers}
 
 
-                isLoading={isSearching}
+                isLoading={search.trim() !== "" && isSearching}
 
 
                 loader={<Loader />}

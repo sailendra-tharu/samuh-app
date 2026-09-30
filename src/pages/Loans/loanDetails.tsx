@@ -166,7 +166,7 @@ export default function LoanDetails() {
     );
   };
 
-  if (isLoading) return <Loader />;
+  if (isLoading) return <Loader variant="page" />;
 
   if (error) {
     return (

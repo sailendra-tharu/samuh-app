@@ -1,6 +1,19 @@
-export default function Loader() {
+type LoaderProps = {
+  // "inline" sits inside a table or card, "page" keeps the sidebar and header
+  // visible, and "screen" covers the whole window. "page" and "screen" both
+  // centre on the window so the spinner never jumps between them.
+  variant?: "inline" | "page" | "screen";
+};
+
+const wrapperClasses: Record<NonNullable<LoaderProps["variant"]>, string> = {
+  inline: "flex items-center justify-center py-6",
+  page: "pointer-events-none fixed inset-0 z-30 flex items-center justify-center",
+  screen: "fixed inset-0 z-[9999] flex items-center justify-center bg-white",
+};
+
+export default function Loader({ variant = "inline" }: LoaderProps) {
   return (
-    <div className="flex items-center justify-center py-6">
+    <div className={wrapperClasses[variant]}>
 
       <div className="relative h-8 w-8 animate-spin">
 

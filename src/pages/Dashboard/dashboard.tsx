@@ -21,6 +21,7 @@ import { useLoans } from "@/hook/loan";
 import { useMembers } from "@/hook/member";
 import { useSavings } from "@/hook/saving";
 import { useAuth } from "@/context/authcontext";
+import Loader from "@/component/Loader/loader";
 
 const money = new Intl.NumberFormat("en-IN", {
   maximumFractionDigits: 0,
@@ -269,6 +270,9 @@ function Dashboard() {
     },
   ] as const;
 
+  // One loader for the whole page until its data arrives.
+  if (isLoading) return <Loader variant="page" />;
+
   return (
     <div className="mx-auto min-w-0 w-full max-w-[1480px] space-y-5 pb-8 sm:space-y-6">
       <section className="relative overflow-hidden rounded-2xl bg-[#103f34] px-4 py-5 text-white shadow-[0_18px_45px_-24px_rgba(16,63,52,0.8)] sm:rounded-[28px] sm:px-8 sm:py-8">
@@ -314,7 +318,7 @@ function Dashboard() {
                 <div>
                   <p className="text-sm font-medium text-slate-500">{stat.label}</p>
                   <p className={`mt-3 text-[27px] font-semibold tracking-[-0.04em] ${stat.valueClass}`}>
-                    {isLoading ? "—" : stat.value}
+                    {stat.value}
                   </p>
                 </div>
                 <span className={`rounded-xl p-3 ${stat.iconClass}`}>
@@ -379,9 +383,7 @@ function Dashboard() {
                 <p className="mt-0.5 text-sm font-semibold text-[#07583e]">
                   {selectedMonth === null || selectedYear === null
                     ? "Select period"
-                    : isLoading
-                      ? "—"
-                      : formatCurrency(selectedMonthTotal)}
+                    : formatCurrency(selectedMonthTotal)}
                 </p>
               </div>
             </div>
@@ -410,7 +412,7 @@ function Dashboard() {
                           ? "bg-[#087b55] shadow-[0_8px_16px_-8px_rgba(8,123,85,0.7)]"
                           : "bg-[#b9e5d1] group-hover:bg-[#82d1ac]"
                       }`}
-                      style={{ height: `${isLoading ? 5 : height}%` }}
+                      style={{ height: `${height}%` }}
                     />
                   </div>
                   <span className={`text-xs ${isCurrentMonth ? "font-semibold text-[#087b55]" : "text-slate-400"}`}>
@@ -437,7 +439,7 @@ function Dashboard() {
             <div className="relative grid h-28 w-28 shrink-0 place-items-center rounded-full" style={{ background: `conic-gradient(#6b57ce ${collectionRate}%, #eeeaff ${collectionRate}% 100%)` }}>
               <div className="grid h-[88px] w-[88px] place-items-center rounded-full bg-white">
                 <div className="text-center">
-                  <p className="text-2xl font-semibold tracking-[-0.05em] text-slate-900">{isLoading ? "—" : `${collectionRate}%`}</p>
+                  <p className="text-2xl font-semibold tracking-[-0.05em] text-slate-900">{`${collectionRate}%`}</p>
                   <p className="text-[10px] uppercase tracking-[0.1em] text-slate-400">collected</p>
                 </div>
               </div>
@@ -445,11 +447,11 @@ function Dashboard() {
             <div className="min-w-0 space-y-3">
               <div className="flex items-center justify-between gap-4 text-sm">
                 <span className="flex items-center gap-2 text-slate-500"><span className="h-2 w-2 rounded-full bg-[#6b57ce]" />Paid principal</span>
-                <span className="font-semibold text-slate-800">{isLoading ? "—" : formatCompactCurrency(paidPrincipal)}</span>
+                <span className="font-semibold text-slate-800">{formatCompactCurrency(paidPrincipal)}</span>
               </div>
               <div className="flex items-center justify-between gap-4 text-sm">
                 <span className="flex items-center gap-2 text-slate-500"><span className="h-2 w-2 rounded-full bg-slate-200" />Outstanding</span>
-                <span className="font-semibold text-slate-800">{isLoading ? "—" : formatCompactCurrency(outstandingPrincipal)}</span>
+                <span className="font-semibold text-slate-800">{formatCompactCurrency(outstandingPrincipal)}</span>
               </div>
             </div>
           </div>
@@ -457,11 +459,11 @@ function Dashboard() {
           <div className="mt-7 grid grid-cols-2 gap-3 border-t border-slate-100 pt-5">
             <div>
               <p className="text-xs text-slate-500">Total issued</p>
-              <p className="mt-1 text-lg font-semibold text-slate-900">{isLoading ? "—" : formatCompactCurrency(totalLoanPrincipal)}</p>
+              <p className="mt-1 text-lg font-semibold text-slate-900">{formatCompactCurrency(totalLoanPrincipal)}</p>
             </div>
             <div>
               <p className="text-xs text-slate-500">Active loans</p>
-              <p className="mt-1 text-lg font-semibold text-slate-900">{isLoading ? "—" : activeLoans.length}</p>
+              <p className="mt-1 text-lg font-semibold text-slate-900">{activeLoans.length}</p>
             </div>
           </div>
         </article>
@@ -478,9 +480,7 @@ function Dashboard() {
           </div>
 
           <div className="divide-y divide-slate-100">
-            {isLoading ? (
-              <div className="px-6 py-12 text-center text-sm text-slate-400">Loading recent activity…</div>
-            ) : activityItems.length === 0 ? (
+            {activityItems.length === 0 ? (
               <div className="px-6 py-12 text-center text-sm text-slate-400">No activity recorded yet.</div>
             ) : (
               activityItems.map((item) => (
@@ -517,9 +517,7 @@ function Dashboard() {
           </div>
 
           <div className="mt-6 divide-y divide-slate-100">
-            {isLoading ? (
-              <div className="py-10 text-center text-sm text-slate-400">Loading contributors…</div>
-            ) : topContributors.length === 0 ? (
+            {topContributors.length === 0 ? (
               <div className="py-10 text-center text-sm text-slate-400">No savings recorded yet.</div>
             ) : (
               topContributors.map((contributor, index) => (

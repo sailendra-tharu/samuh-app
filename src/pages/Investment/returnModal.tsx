@@ -4,6 +4,7 @@ import type { Investment } from "@/api/investment";
 
 type ReturnFormProps = {
   investment: Investment;
+  mode?: "add" | "edit";
   onSubmit: (amount: number) => void | Promise<void>;
   onCancel: () => void;
   error?: string;
@@ -11,18 +12,29 @@ type ReturnFormProps = {
 
 export default function ReturnForm({
   investment,
+  mode = "add",
   onSubmit,
   onCancel,
   error,
 }: ReturnFormProps) {
-  const [amount, setAmount] = useState("");
+  const isEdit = mode === "edit";
+  const [amount, setAmount] = useState(
+    isEdit ? String(investment.returnValue) : ""
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     const parsedAmount = Number(amount);
 
-    if (!Number.isInteger(parsedAmount) || parsedAmount <= 0) return;
+    if (
+      amount === "" ||
+      !Number.isInteger(parsedAmount) ||
+      parsedAmount < 0 ||
+      (!isEdit && parsedAmount === 0)
+    ) {
+      return;
+    }
 
     setIsSubmitting(true);
 
@@ -52,21 +64,23 @@ export default function ReturnForm({
 
       <div>
         <label className="mb-1 block text-sm font-medium text-gray-700">
-          Return Value
+          {isEdit ? "Total Returned" : "Return Value"}
         </label>
         <input
           type="number"
           value={amount}
           onChange={(event) => setAmount(event.target.value)}
-          placeholder="Enter amount returned"
-          min="1"
+          placeholder={isEdit ? "Enter total returned" : "Enter amount returned"}
+          min={isEdit ? "0" : "1"}
           step="1"
           className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
           required
           autoFocus
         />
         <p className="mt-1 text-xs text-gray-500">
-          This amount will be added to the investment&apos;s total returned value.
+          {isEdit
+            ? "This amount will replace the investment\u2019s total returned value."
+            : "This amount will be added to the investment\u2019s total returned value."}
         </p>
       </div>
 
@@ -90,7 +104,7 @@ export default function ReturnForm({
           disabled={isSubmitting}
           className="w-full rounded-lg bg-green-600 px-5 py-2 text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
         >
-          {isSubmitting ? "Saving..." : "Save Return"}
+          {isSubmitting ? "Saving..." : isEdit ? "Update Return" : "Save Return"}
         </button>
       </div>
     </form>

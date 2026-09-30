@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { Suspense, useEffect, useRef, useState, type RefObject } from "react";
 import { Outlet } from "react-router-dom";
 import { Bell, ChevronDown, LogOut, Menu, Settings } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Sidebar from "./sidebar";
 import { useAuth } from "@/context/authcontext";
+import Loader from "@/component/Loader/loader";
 
 
 function Layout() {
@@ -59,7 +60,7 @@ function Layout() {
           : section === "profit-loss"
             ? "Enter and review monthly profit and loss details in one place."
           : section === "investment"
-            ? "Track group investments, current value, and returns in one place."
+            ? "Track group investments, charges, and returns in one place."
           : section === "access-control"
             ? "Manage member read and write access."
           : "Review the latest details for your group.";
@@ -150,8 +151,10 @@ function Layout() {
 
         {/* Main Content */}
         <main className="min-w-0 overflow-x-hidden p-3 pb-8 sm:p-4 sm:pb-10 lg:p-8">
-
-          <Outlet />
+          {/* Keep the sidebar and header visible while a page chunk loads. */}
+          <Suspense fallback={<Loader variant="page" />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

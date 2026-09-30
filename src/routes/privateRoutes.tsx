@@ -14,7 +14,7 @@ export default function ProtectedRoute({ children }: Props) {
   const { loading, isAuthenticated } = useAuth();
 
   if (loading) {
-    return <Loader />;
+    return <Loader variant="screen" />;
   }
 
   if (!isAuthenticated) {
@@ -31,7 +31,7 @@ type SectionRouteProps = Props & {
 export function SectionRoute({ children, section }: SectionRouteProps) {
   const { canView, permissions, isLoading } = useSectionAccess();
 
-  if (isLoading) return <Loader />;
+  if (isLoading) return <Loader variant="page" />;
 
   if (canView(section)) return children;
 

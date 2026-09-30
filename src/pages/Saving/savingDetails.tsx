@@ -112,7 +112,7 @@ export default function SavingDetails() {
   };
 
   if (membersLoading || savingsLoading) {
-    return <Loader />;
+    return <Loader variant="page" />;
   }
 
   return (
