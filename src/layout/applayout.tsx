@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import Sidebar from "./sidebar";
 import { useAuth } from "@/context/authcontext";
 import Loader from "@/component/Loader/loader";
+import { useRealtimeSync } from "@/hook/realtime";
 
 
 function Layout() {
@@ -14,7 +15,10 @@ function Layout() {
   const desktopProfileMenuRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, role, isAdmin, logout } = useAuth();
+  const { user, role, isAdmin, logout, isAuthenticated } = useAuth();
+
+  // Refresh cached data as soon as any table changes in Supabase.
+  useRealtimeSync(isAuthenticated);
 
   useEffect(() => {
     const handlePointerDown = (event: PointerEvent) => {
