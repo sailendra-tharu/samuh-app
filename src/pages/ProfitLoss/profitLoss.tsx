@@ -617,9 +617,6 @@ function ProfitLoss() {
           <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-sky-700">
             {formatCurrency(outstandingLoanPrincipal)}
           </p>
-          <p className="mt-2 text-xs text-slate-500">
-            All loans after principal repayments
-          </p>
         </article>
 
         <article className="rounded-2xl border border-violet-100 bg-violet-50 p-5 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)]">
@@ -630,9 +627,6 @@ function ProfitLoss() {
           <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-violet-700">
             {formatCurrency(totalLoanIssued)}
           </p>
-          <p className="mt-2 text-xs text-slate-500">
-            Principal issued across all loans
-          </p>
         </article>
 
         <article className="rounded-2xl border border-orange-100 bg-orange-50 p-5 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)]">
@@ -642,9 +636,6 @@ function ProfitLoss() {
           </div>
           <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-orange-700">
             {formatCurrency(totalFundsIssued)}
-          </p>
-          <p className="mt-2 text-xs text-slate-500">
-            Funds issued across all investment fund issues
           </p>
         </article>
 
@@ -658,9 +649,6 @@ function ProfitLoss() {
               ? "Select period"
               : formatCurrency(selectedSummary.totalCollections)}
           </p>
-          <p className="mt-2 text-xs text-slate-500">
-            Profit plus saving payment received
-          </p>
         </article>
 
         <article className="rounded-2xl border border-teal-100 bg-teal-50 p-5 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)]">
@@ -672,9 +660,6 @@ function ProfitLoss() {
             {selectedYear === null
               ? "Select period"
               : formatCurrency(selectedSummary.netCollection)}
-          </p>
-          <p className="mt-2 text-xs text-slate-500">
-            Total Collection after recorded losses, outstanding loan principal and issued investment funds deduction
           </p>
         </article>
 
