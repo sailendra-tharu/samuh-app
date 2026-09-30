@@ -95,6 +95,7 @@ export default function SavingDetails() {
         "Fine In",
         "Fine Out",
         "Payment Received",
+        "Bonus",
         "Description",
       ],
       visibleSavings.map((saving) => [
@@ -104,6 +105,7 @@ export default function SavingDetails() {
         getRemainingFine(saving.fineIn, saving.fineOut),
         saving.fineOut ?? 0,
         saving.paymentReceived ?? 0,
+        saving.bonus ?? 0,
         saving.description,
       ])
     );
@@ -192,6 +194,7 @@ export default function SavingDetails() {
                 <th className="border-r border-white/20 px-4 py-3">
                   Payment Received
                 </th>
+                <th className="border-r border-white/20 px-4 py-3">Bonus</th>
                 <th className="px-4 py-3">Description</th>
               </tr>
             </thead>
@@ -220,6 +223,9 @@ export default function SavingDetails() {
                     {formatAmount(saving.paymentReceived)}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700">
+                    {formatAmount(saving.bonus)}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-700">
                     {saving.description || "—"}
                   </td>
                 </tr>
@@ -228,7 +234,7 @@ export default function SavingDetails() {
               {visibleSavings.length === 0 && (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={8}
                     className="px-4 py-8 text-center text-sm text-gray-500"
                   >
                     {selectedYear !== null

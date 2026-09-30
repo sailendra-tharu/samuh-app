@@ -64,6 +64,7 @@ const createNextMonthSaving = (saving: Saving): Saving => ({
       : Math.max(0, saving.fineIn - (saving.fineOut ?? 0)),
   fineOut: 0,
   paymentReceived: null,
+  bonus: null,
 });
 
 function Savings() {

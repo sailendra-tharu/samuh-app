@@ -15,7 +15,6 @@ import type { Saving } from "@/api/saving";
 import Pagination from "@/component/Pagination/pagination";
 import Loader from "@/component/Loader/loader";
 import { useInvestments } from "@/hook/investment";
-import { useInvestmentFundIssues } from "@/hook/investmentFund";
 import { useLossEntries } from "@/hook/loss";
 import { useLoans } from "@/hook/loan";
 import { useSavings } from "@/hook/saving";
@@ -46,6 +45,7 @@ type MonthlySummary = {
   loss: number;
   net: number;
   totalCollections: number;
+  netCollection: number;
 };
 
 const getMonthlyDescription = (row: MonthlySummary) => {
@@ -245,11 +245,6 @@ function ProfitLoss() {
     isLoading: investmentsLoading,
     error: investmentsError,
   } = useInvestments();
-  const {
-    issues: investmentFundIssues,
-    isLoading: investmentFundsLoading,
-    error: investmentFundsError,
-  } = useInvestmentFundIssues();
   {
     /* lossEntries */
   }
@@ -263,8 +258,16 @@ function ProfitLoss() {
     isDeleting,
   } = useLossEntries();
   const isLoading =
-    savingsLoading || loansLoading || investmentsLoading || investmentFundsLoading;
+    savingsLoading || loansLoading || investmentsLoading;
   const reportLoading = isLoading || lossLoading;
+  const outstandingLoanPrincipal = loans.reduce(
+    (total, loan) => total + (loan.remainingPrincipal ?? 0),
+    0
+  );
+  const totalLoanIssued = loans.reduce(
+    (total, loan) => total + (loan.principalAmount ?? 0),
+    0
+  );
 
   const monthOptions = getMonthOptions(selectedYear ?? currentYear);
   const selectedMonthKey =
@@ -290,24 +293,9 @@ function ProfitLoss() {
     const savingProfit = getSavingProfit(savings, monthKey);
     const loanProfit = getLoanProfit(loans, monthKey);
     const investmentGainOrLoss = getInvestmentGainOrLossForMonth(monthKey);
-    const investmentFundsIssued = investmentFundIssues
-      .filter((issue) => getBSMonthKey(issue.issueDate) === monthKey)
-      .reduce((total, issue) => total + issue.amount, 0);
     const loss = lossEntries
       .filter((entry) => getBSMonthKey(entry.lossDate) === monthKey)
       .reduce((total, entry) => total + entry.amount, 0);
-    const totalCollections =
-      savingProfit.newMember +
-      savingProfit.fineOut +
-      savingProfit.paymentReceived +
-      loanProfit.renewal +
-      loanProfit.fineOut +
-      loanProfit.interest +
-      loanProfit.principalCollected +
-      investmentGainOrLoss -
-      loanProfit.principalIssued -
-      investmentFundsIssued -
-      loss;
     const profit =
       savingProfit.fineOut +
       savingProfit.newMember +
@@ -315,6 +303,8 @@ function ProfitLoss() {
       loanProfit.interest +
       loanProfit.fineOut +
       investmentGainOrLoss;
+    const totalCollections = profit + savingProfit.paymentReceived;
+    const netCollection = totalCollections - loss;
     const month = monthOptions.find((option) => option.key === monthKey);
 
     return {
@@ -330,6 +320,7 @@ function ProfitLoss() {
       loss,
       net: profit - loss,
       totalCollections,
+      netCollection,
     };
   };
   const emptySummary: MonthlySummary = {
@@ -345,6 +336,7 @@ function ProfitLoss() {
     loss: 0,
     net: 0,
     totalCollections: 0,
+    netCollection: 0,
   };
   const annualRows =
     selectedYear === null
@@ -362,7 +354,14 @@ function ProfitLoss() {
     0
   );
   const selectedSummary = selectedMonthKey
-    ? getMonthlySummary(selectedMonthKey)
+    ? (() => {
+        const monthSummary = getMonthlySummary(selectedMonthKey);
+
+        return {
+          ...monthSummary,
+          netCollection: monthSummary.netCollection - outstandingLoanPrincipal,
+        };
+      })()
     : selectedYear === null
       ? emptySummary
       : {
@@ -378,6 +377,9 @@ function ProfitLoss() {
           loss: annualLoss,
           net: annualNet,
           totalCollections: annualTotalCollections,
+          netCollection:
+            annualRows.reduce((total, row) => total + row.netCollection, 0) -
+            outstandingLoanPrincipal,
         };
   const selectedMonthLabel = selectedMonthKey
     ? monthOptions.find((month) => month.key === selectedMonthKey)?.label ?? selectedMonthKey
@@ -544,11 +546,6 @@ function ProfitLoss() {
         </div>
       )}
 
-      {investmentFundsError && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Investment fund issues could not be loaded. Run the investment fund issue migration in Supabase.
-        </div>
-      )}
 
       {actionError && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -596,7 +593,7 @@ function ProfitLoss() {
         </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <article className="rounded-2xl border border-emerald-100 bg-emerald-50 p-5 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)]">
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm font-medium text-emerald-700">profit</p>
@@ -617,9 +614,35 @@ function ProfitLoss() {
           </p>
         </article>
 
+        <article className="rounded-2xl border border-sky-100 bg-sky-50 p-5 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)]">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-medium text-sky-700">Outstanding Loan Principal</p>
+            <Wallet className="h-5 w-5 text-sky-600" />
+          </div>
+          <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-sky-700">
+            {loansLoading ? "—" : formatCurrency(outstandingLoanPrincipal)}
+          </p>
+          <p className="mt-2 text-xs text-slate-500">
+            All loans after principal repayments
+          </p>
+        </article>
+
+        <article className="rounded-2xl border border-violet-100 bg-violet-50 p-5 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)]">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-medium text-violet-700">Total Loan Issued</p>
+            <Wallet className="h-5 w-5 text-violet-600" />
+          </div>
+          <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-violet-700">
+            {loansLoading ? "—" : formatCurrency(totalLoanIssued)}
+          </p>
+          <p className="mt-2 text-xs text-slate-500">
+            Principal issued across all loans
+          </p>
+        </article>
+
         <article className="rounded-2xl border border-amber-100 bg-amber-50 p-5 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)]">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-medium text-amber-700">Total Collections</p>
+            <p className="text-sm font-medium text-amber-700">Total Collection</p>
             <Wallet className="h-5 w-5 text-amber-600" />
           </div>
           <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-amber-700">
@@ -630,7 +653,24 @@ function ProfitLoss() {
                 : formatCurrency(selectedSummary.totalCollections)}
           </p>
           <p className="mt-2 text-xs text-slate-500">
-            After loan disbursements and recorded losses
+            Profit plus saving payment received
+          </p>
+        </article>
+
+        <article className="rounded-2xl border border-teal-100 bg-teal-50 p-5 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)]">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-medium text-teal-700">Net Collection</p>
+            <Wallet className="h-5 w-5 text-teal-600" />
+          </div>
+          <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-teal-700">
+            {selectedYear === null
+              ? "Select period"
+              : reportLoading
+                ? "—"
+                : formatCurrency(selectedSummary.netCollection)}
+          </p>
+          <p className="mt-2 text-xs text-slate-500">
+            Total Collection after recorded losses and outstanding loan principal deduction
           </p>
         </article>
 

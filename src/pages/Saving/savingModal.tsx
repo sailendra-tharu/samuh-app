@@ -198,6 +198,12 @@ export default function SavingForm({
               onChange={handleChange}
             />
             <NumberField
+              label="Bonus"
+              name="bonus"
+              value={form.bonus}
+              onChange={handleChange}
+            />
+            <NumberField
               label="Fine Out"
               name="fineOut"
               value={form.fineOut}
