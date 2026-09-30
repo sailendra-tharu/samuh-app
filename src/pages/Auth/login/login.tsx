@@ -2,8 +2,10 @@ import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 
+import Celebration from "@/component/Celebration/celebration";
 import Input from "@/component/Input/input";
 import { useLogin } from "@/hook/login";
+import { getHoliday } from "@/lib/holidays";
 
 import {
   EyeIcon,
@@ -21,6 +23,12 @@ function Login() {
   const navigate = useNavigate();
 
   const [showPassword, setShowPassword] = useState(false);
+  const [holiday] = useState(() =>
+    // In development, /login?celebrate previews the animation on any day.
+    import.meta.env.DEV && new URLSearchParams(window.location.search).has("celebrate")
+      ? { name: "Preview", greeting: "Happy Dashain!" }
+      : getHoliday()
+  );
 
   const { mutate, isPending } = useLogin();
 
@@ -49,6 +57,7 @@ function Login() {
 
   return (
     <main className="relative isolate flex min-h-screen items-center justify-center bg-[#f5fbf8] px-3 py-6 sm:px-5">
+      {holiday && <Celebration holiday={holiday} />}
       <section className="w-full max-w-[516px] rounded-[15px] bg-white p-5 shadow-lg sm:p-10">
         <header className="flex flex-col items-center justify-center gap-3 text-center sm:flex-row sm:gap-5 sm:text-left">
           <LogoMark className="h-16 w-16 shrink-0 sm:h-20 sm:w-20" />
