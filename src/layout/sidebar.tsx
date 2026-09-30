@@ -9,6 +9,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
+import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/authcontext";
 import { useSectionAccess } from "@/hook/access";
@@ -74,6 +75,20 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
     (item) => isAdmin || canView(item.section)
   );
 
+  // While the mobile drawer is open, stop the page behind it from scrolling.
+  // Otherwise the scroll passes through to the page, the browser address bar
+  // collapses or expands, and the drawer jumps as the viewport height changes.
+  useEffect(() => {
+    if (!isOpen || window.matchMedia("(min-width: 1024px)").matches) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -89,7 +104,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
       {/* Mobile Backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 z-40 touch-none bg-black/50 lg:hidden"
           onClick={onClose}
         />
       )}
@@ -101,7 +116,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
     w-[85vw] max-w-[18rem] lg:w-64
     bg-[#006b45] text-white
     flex flex-col
-    overflow-y-auto
+    overflow-hidden
     transform transition-transform duration-300
     ${isOpen ? "translate-x-0" : "-translate-x-full"}
     lg:translate-x-0 lg:sticky lg:top-0
@@ -135,7 +150,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
 
         {/* Menu */}
-        <nav className="flex-1 overflow-y-auto px-2.5 py-5 sm:px-3 sm:py-6">
+        <nav className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2.5 py-5 sm:px-3 sm:py-6">
           <div className="space-y-1.5">
             {visibleMenuItems.map((item) => {
               const Icon = item.icon;
