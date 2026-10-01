@@ -184,18 +184,11 @@ function Dashboard() {
       (total, investment) => total + (getInvestmentGainOrLoss(investment) ?? 0),
       0
     );
+  const totalCollection = totalProfit + totalSavings;
   const totalBonus = savings.reduce(
     (total, saving) => total + (saving.bonus ?? 0),
     0
   );
-  const totalCollection = totalProfit + totalSavings + totalBonus;
-  const savingsThisMonth = savings.reduce((total, saving) => {
-    const currentBS = NepaliDate.now();
-
-    return getBSMonthKey(saving.date) === currentBS.format("YYYY-MM")
-      ? total + (saving.paymentReceived ?? 0)
-      : total;
-  }, 0);
   const totalLoanPrincipal = loans.reduce(
     (total, loan) => total + (loan.principalAmount ?? 0),
     0
@@ -303,7 +296,7 @@ function Dashboard() {
     {
       label: "Total collection",
       value: formatCurrency(totalCollection),
-      detail: `Profit + savings + ${formatCurrency(totalBonus)} bonus, all years`,
+      detail: "Profit + savings, all years",
       icon: CircleDollarSign,
       iconClass: "bg-[#e0f2fe] text-[#0369a1]",
       valueClass: "text-[#0f766e]",
@@ -319,9 +312,9 @@ function Dashboard() {
       accent: "#15803d",
     },
     {
-      label: "Total savings",
-      value: formatCurrency(totalSavings),
-      detail: `${formatCurrency(savingsThisMonth)} collected this month`,
+      label: "Total savings + bonus",
+      value: formatCurrency(totalSavings + totalBonus),
+      detail: `${formatCurrency(totalSavings)} savings + ${formatCurrency(totalBonus)} bonus`,
       icon: Wallet,
       iconClass: "bg-[#fff4da] text-[#bf7b08]",
       valueClass: "text-[#087b55]",
