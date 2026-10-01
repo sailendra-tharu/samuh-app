@@ -283,11 +283,10 @@ const toLoan = (loan: RawLoan): Loan => {
     fineOut,
     interest: calculateLoanInterest(remainingPrincipal),
     interestPaid,
+    // A saved EMI may be a manual override, so it wins over the calculated one.
     emi:
-      calculateLoanEmi(
-        principalAmount,
-        toNumberOrNull(loan.loan_term_years)
-      ) ?? toNumberOrNull(loan.emi),
+      toNumberOrNull(loan.emi) ??
+      calculateLoanEmi(principalAmount, toNumberOrNull(loan.loan_term_years)),
     renewalPaid,
     paidAmount,
     remainingPrincipal,
@@ -491,7 +490,7 @@ const toLoanRow = (loan: Loan, memberId: number) => {
     principal_amount: loan.principalAmount,
     fine_in: loan.fineIn,
     fine_out: loan.fineOut ?? 0,
-    emi: calculateLoanEmi(loan.principalAmount, loan.loanTermYears) ?? loan.emi,
+    emi: loan.emi ?? calculateLoanEmi(loan.principalAmount, loan.loanTermYears),
   };
 };
 

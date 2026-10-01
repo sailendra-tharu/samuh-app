@@ -95,8 +95,8 @@ export default function LoanForm({
         calculateRemainingPrincipal(loan.principalAmount, loan.paidAmount)
       ),
       emi:
-        calculateLoanEmi(loan.principalAmount, loan.loanTermYears) ??
-        loan.emi,
+        loan.emi ??
+        calculateLoanEmi(loan.principalAmount, loan.loanTermYears),
     });
   }, [initialData]);
 
@@ -220,11 +220,10 @@ export default function LoanForm({
           onChange={handleChange}
         />
         <NumberField
-          label="Fine Out (Auto)"
+          label="Fine Out"
           name="fineOut"
           value={form.fineOut}
           onChange={handleChange}
-          readOnly
         />
         <NumberField
           label="Interest (Auto)"
@@ -234,11 +233,10 @@ export default function LoanForm({
           readOnly
         />
         <NumberField
-          label="Monthly EMI (Auto)"
+          label="Monthly EMI"
           name="emi"
           value={form.emi}
           onChange={handleChange}
-          readOnly
           required
         />
       </div>
