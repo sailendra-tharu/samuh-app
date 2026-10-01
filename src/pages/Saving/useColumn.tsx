@@ -92,7 +92,7 @@ export const userColumns = (
         <div className="flex items-center gap-2">
           <button
             type="button"
-            className="rounded-md p-2 text-slate-600 transition hover:bg-slate-100 hover:text-green-700"
+            className="rounded-md p-2 text-green-600 transition hover:bg-slate-100"
             onClick={(event) => {
               event.stopPropagation();
               onAddNextSaving(row.index);
@@ -105,7 +105,7 @@ export const userColumns = (
 
           <button
             type="button"
-            className="rounded-md p-2 text-slate-600 transition hover:bg-slate-100 hover:text-blue-700"
+            className="rounded-md p-2 text-blue-600 transition hover:bg-slate-100"
             onClick={(event) => {
               event.stopPropagation();
               onEdit(row.index);
@@ -118,7 +118,7 @@ export const userColumns = (
 
           <button
             type="button"
-            className="rounded-md p-2 text-slate-600 transition hover:bg-slate-100 hover:text-red-600"
+            className="rounded-md p-2 text-red-600 transition hover:bg-slate-100"
             onClick={(event) => {
               event.stopPropagation();
               onDelete(row.index);
