@@ -8,6 +8,9 @@ import {
   CircleDollarSign,
   Clock3,
   HandCoins,
+  Landmark,
+  PiggyBank,
+  TrendingDown,
   TrendingUp,
   Users,
   Wallet,
@@ -20,7 +23,9 @@ import { getInvestmentGainOrLoss } from "@/api/investment";
 import type { Loan } from "@/api/loan";
 import type { Saving } from "@/api/saving";
 import { useInvestments } from "@/hook/investment";
+import { useInvestmentFundIssues } from "@/hook/investmentFund";
 import { useLoans } from "@/hook/loan";
+import { useLossEntries } from "@/hook/loss";
 import { useMembers } from "@/hook/member";
 import { useSavings } from "@/hook/saving";
 import { useAuth } from "@/context/authcontext";
@@ -32,12 +37,12 @@ const money = new Intl.NumberFormat("en-IN", {
 
 const formatCurrency = (value: number) => `Rs ${money.format(Math.round(value))}`;
 
-const formatCompactCurrency = (value: number) => {
-  if (value >= 10_000_000) return `Rs ${(value / 10_000_000).toFixed(1)} Cr`;
-  if (value >= 100_000) return `Rs ${(value / 100_000).toFixed(1)} L`;
-  if (value >= 1_000) return `Rs ${(value / 1_000).toFixed(1)}K`;
+// New Member is a free-text field, so non-numeric entries count as 0
+// (same parsing as the Profit & Loss page).
+const toAmount = (value: string) => {
+  const amount = Number(value.replace(/,/g, "").trim());
 
-  return formatCurrency(value);
+  return value.trim() && Number.isFinite(amount) ? Math.max(0, amount) : 0;
 };
 
 const parseDate = (value: string) => {
@@ -145,9 +150,17 @@ function Dashboard() {
   const { savings, isLoading: savingsLoading } = useSavings();
   const { loans, isLoading: loansLoading, error: loansError } = useLoans();
   const { investments, isLoading: investmentsLoading } = useInvestments();
+  const { issues: fundIssues, isLoading: fundIssuesLoading } =
+    useInvestmentFundIssues();
+  const { lossEntries, isLoading: lossLoading } = useLossEntries();
 
   const isLoading =
-    membersLoading || savingsLoading || loansLoading || investmentsLoading;
+    membersLoading ||
+    savingsLoading ||
+    loansLoading ||
+    investmentsLoading ||
+    fundIssuesLoading ||
+    lossLoading;
   const totalSavings = savings.reduce(
     (total, saving) => total + (saving.paymentReceived ?? 0),
     0
@@ -156,7 +169,7 @@ function Dashboard() {
   const totalProfit =
     savings.reduce(
       (total, saving) =>
-        total + (saving.fineOut ?? 0) + Number(saving.newMember || 0),
+        total + (saving.fineOut ?? 0) + toAmount(saving.newMember),
       0
     ) +
     loans.reduce(
@@ -255,6 +268,24 @@ function Dashboard() {
           ? "Good evening"
           : "Good night";
 
+  const totalFundsIssued = fundIssues.reduce(
+    (total, issue) => total + (issue.amount ?? 0),
+    0
+  );
+  const totalLoss = lossEntries.reduce(
+    (total, entry) => total + (entry.amount ?? 0),
+    0
+  );
+  // What is left of the collection once profit, loans still out, investment
+  // funds and losses are accounted for, so that
+  // profit + outstanding + funds issued + loss + net = total collection.
+  const netCollection =
+    totalCollection -
+    totalProfit -
+    outstandingPrincipal -
+    totalFundsIssued -
+    totalLoss;
+
   const statCards = [
     {
       label: "Total members",
@@ -267,7 +298,7 @@ function Dashboard() {
     },
     {
       label: "Total collection",
-      value: formatCompactCurrency(totalCollection),
+      value: formatCurrency(totalCollection),
       detail: "Profit + savings, all years",
       icon: CircleDollarSign,
       iconClass: "bg-[#e0f2fe] text-[#0369a1]",
@@ -276,7 +307,7 @@ function Dashboard() {
     },
     {
       label: "Total profit",
-      value: formatCompactCurrency(totalProfit),
+      value: formatCurrency(totalProfit),
       detail: "Fines, fees, interest & investments, all years",
       icon: TrendingUp,
       iconClass: "bg-[#dcfce7] text-[#15803d]",
@@ -285,12 +316,21 @@ function Dashboard() {
     },
     {
       label: "Total savings",
-      value: formatCompactCurrency(totalSavings),
+      value: formatCurrency(totalSavings),
       detail: `${formatCurrency(savingsThisMonth)} collected this month`,
       icon: Wallet,
       iconClass: "bg-[#fff4da] text-[#bf7b08]",
       valueClass: "text-[#087b55]",
       accent: "#bf7b08",
+    },
+    {
+      label: "Net collection",
+      value: formatCurrency(netCollection),
+      detail: "After profit, loss, loans out & funds issued",
+      icon: PiggyBank,
+      iconClass: "bg-[#ccfbf1] text-[#0f766e]",
+      valueClass: netCollection < 0 ? "text-[#dc2626]" : "text-[#0f766e]",
+      accent: "#0f766e",
     },
     {
       label: "Active loans",
@@ -303,12 +343,39 @@ function Dashboard() {
     },
     {
       label: "Outstanding balance",
-      value: formatCompactCurrency(outstandingPrincipal),
+      value: formatCurrency(outstandingPrincipal),
       detail: "Principal remaining to collect",
       icon: CircleDollarSign,
       iconClass: "bg-[#e8f3ff] text-[#3679c9]",
       valueClass: "text-[#dc2626]",
       accent: "#3679c9",
+    },
+    {
+      label: "Total loan issued",
+      value: formatCurrency(totalLoanPrincipal),
+      detail: `Across ${loans.length} loan${loans.length === 1 ? "" : "s"}, all years`,
+      icon: Landmark,
+      iconClass: "bg-[#f3e8ff] text-[#7e22ce]",
+      valueClass: "text-slate-900",
+      accent: "#7e22ce",
+    },
+    {
+      label: "Investment funds issued",
+      value: formatCurrency(totalFundsIssued),
+      detail: "Funds given out for investment",
+      icon: BriefcaseBusiness,
+      iconClass: "bg-[#ffedd5] text-[#c2410c]",
+      valueClass: "text-slate-900",
+      accent: "#c2410c",
+    },
+    {
+      label: "Loss",
+      value: formatCurrency(totalLoss),
+      detail: "Recorded losses, all years",
+      icon: TrendingDown,
+      iconClass: "bg-[#fee2e2] text-[#dc2626]",
+      valueClass: "text-[#dc2626]",
+      accent: "#dc2626",
     },
   ] as const;
 
@@ -346,7 +413,7 @@ function Dashboard() {
         <div className="absolute bottom-0 left-1/2 h-px w-1/3 bg-white/10" />
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {statCards.map((stat) => {
           const Icon = stat.icon;
 
@@ -357,9 +424,9 @@ function Dashboard() {
               style={{ borderTopColor: stat.accent, borderTopWidth: 3 }}
             >
               <div className="flex items-start justify-between gap-3">
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-500">{stat.label}</p>
-                  <p className={`mt-3 text-[27px] font-semibold tracking-[-0.04em] ${stat.valueClass}`}>
+                  <p className={`mt-3 break-words text-[27px] font-semibold tracking-[-0.04em] xl:text-[22px] ${stat.valueClass}`}>
                     {stat.value}
                   </p>
                 </div>
@@ -489,11 +556,11 @@ function Dashboard() {
             <div className="min-w-0 space-y-3">
               <div className="flex items-center justify-between gap-4 text-sm">
                 <span className="flex items-center gap-2 text-slate-500"><span className="h-2 w-2 rounded-full bg-[#6b57ce]" />Paid principal</span>
-                <span className="font-semibold text-slate-800">{formatCompactCurrency(paidPrincipal)}</span>
+                <span className="font-semibold text-slate-800">{formatCurrency(paidPrincipal)}</span>
               </div>
               <div className="flex items-center justify-between gap-4 text-sm">
                 <span className="flex items-center gap-2 text-slate-500"><span className="h-2 w-2 rounded-full bg-slate-200" />Outstanding</span>
-                <span className="font-semibold text-slate-800">{formatCompactCurrency(outstandingPrincipal)}</span>
+                <span className="font-semibold text-slate-800">{formatCurrency(outstandingPrincipal)}</span>
               </div>
             </div>
           </div>
@@ -501,7 +568,7 @@ function Dashboard() {
           <div className="mt-7 grid grid-cols-2 gap-3 border-t border-slate-100 pt-5">
             <div>
               <p className="text-xs text-slate-500">Total issued</p>
-              <p className="mt-1 text-lg font-semibold text-slate-900">{formatCompactCurrency(totalLoanPrincipal)}</p>
+              <p className="mt-1 text-lg font-semibold text-slate-900">{formatCurrency(totalLoanPrincipal)}</p>
             </div>
             <div>
               <p className="text-xs text-slate-500">Active loans</p>
@@ -570,7 +637,7 @@ function Dashboard() {
                     <p className="truncate text-sm font-semibold text-slate-800">{contributor.name}</p>
                     <p className="mt-0.5 text-xs text-slate-500">{contributor.records} contribution{contributor.records === 1 ? "" : "s"}</p>
                   </div>
-                  <p className="shrink-0 text-sm font-semibold text-[#087b55]">{formatCompactCurrency(contributor.total)}</p>
+                  <p className="shrink-0 text-sm font-semibold text-[#087b55]">{formatCurrency(contributor.total)}</p>
                 </div>
               ))
             )}
