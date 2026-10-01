@@ -147,6 +147,24 @@ function Dashboard() {
     (total, saving) => total + (saving.paymentReceived ?? 0),
     0
   );
+  const totalCollection =
+    savings.reduce(
+      (total, saving) =>
+        total +
+        (saving.paymentReceived ?? 0) +
+        (saving.fineOut ?? 0) +
+        Number(saving.newMember || 0),
+      0
+    ) +
+    loans.reduce(
+      (total, loan) =>
+        total +
+        (loan.paidAmount ?? 0) +
+        (loan.fineOut ?? 0) +
+        (loan.renewalPaid ?? 0) +
+        (loan.interestPaid ?? 0),
+      0
+    );
   const savingsThisMonth = savings.reduce((total, saving) => {
     const currentBS = NepaliDate.now();
 
@@ -239,6 +257,15 @@ function Dashboard() {
       iconClass: "bg-[#e7f7ef] text-[#087b55]",
       valueClass: "text-slate-900",
       accent: "#087b55",
+    },
+    {
+      label: "Total collection",
+      value: formatCompactCurrency(totalCollection),
+      detail: "Across all recorded years",
+      icon: CircleDollarSign,
+      iconClass: "bg-[#e0f2fe] text-[#0369a1]",
+      valueClass: "text-[#0f766e]",
+      accent: "#0369a1",
     },
     {
       label: "Total savings",
