@@ -82,15 +82,6 @@ export default function SavingDetails() {
   );
 
   const totalCollection = useMemo(() => {
-    return visibleSavings.reduce((acc, s) => {
-      const fine = getRemainingFine(s.fineIn, s.fineOut);
-      const payment = s.paymentReceived ?? 0;
-      const bonus = s.bonus ?? 0;
-      return acc + fine + payment + bonus;
-    }, 0);
-  }, [visibleSavings]);
-
-  const paymentPlusBonusAllTime = useMemo(() => {
     return savings.reduce((acc, s) => {
       const payment = s.paymentReceived ?? 0;
       const bonus = s.bonus ?? 0;
@@ -203,9 +194,10 @@ export default function SavingDetails() {
           
 
           <div className="text-right">
-            <p className="text-sm font-medium text-slate-600">Payment Received + Bonus (All time)</p>
+            <p className="text-sm font-medium text-slate-600">Total Collection</p>
+            <p className="text-xs text-slate-500">Total saving + bonus</p>
             <p className="mt-1 text-lg font-semibold text-slate-800">
-              {formatAmount(paymentPlusBonusAllTime)}
+              {formatAmount(totalCollection)}
             </p>
           </div>
         </div>

@@ -15,8 +15,10 @@ import { useState } from "react";
 import NepaliDate from "nepali-date-converter";
 import { Link } from "react-router-dom";
 
+import { getInvestmentGainOrLoss } from "@/api/investment";
 import type { Loan } from "@/api/loan";
 import type { Saving } from "@/api/saving";
+import { useInvestments } from "@/hook/investment";
 import { useLoans } from "@/hook/loan";
 import { useMembers } from "@/hook/member";
 import { useSavings } from "@/hook/saving";
@@ -141,30 +143,34 @@ function Dashboard() {
   const { members, isLoading: membersLoading } = useMembers();
   const { savings, isLoading: savingsLoading } = useSavings();
   const { loans, isLoading: loansLoading, error: loansError } = useLoans();
+  const { investments, isLoading: investmentsLoading } = useInvestments();
 
-  const isLoading = membersLoading || savingsLoading || loansLoading;
+  const isLoading =
+    membersLoading || savingsLoading || loansLoading || investmentsLoading;
   const totalSavings = savings.reduce(
     (total, saving) => total + (saving.paymentReceived ?? 0),
     0
   );
-  const totalCollection =
+  // All-time profit, from the same sources as the Profit & Loss page.
+  const totalProfit =
     savings.reduce(
       (total, saving) =>
-        total +
-        (saving.paymentReceived ?? 0) +
-        (saving.fineOut ?? 0) +
-        Number(saving.newMember || 0),
+        total + (saving.fineOut ?? 0) + Number(saving.newMember || 0),
       0
     ) +
     loans.reduce(
       (total, loan) =>
         total +
-        (loan.paidAmount ?? 0) +
         (loan.fineOut ?? 0) +
         (loan.renewalPaid ?? 0) +
         (loan.interestPaid ?? 0),
       0
+    ) +
+    investments.reduce(
+      (total, investment) => total + (getInvestmentGainOrLoss(investment) ?? 0),
+      0
     );
+  const totalCollection = totalProfit + totalSavings;
   const savingsThisMonth = savings.reduce((total, saving) => {
     const currentBS = NepaliDate.now();
 
@@ -261,7 +267,7 @@ function Dashboard() {
     {
       label: "Total collection",
       value: formatCompactCurrency(totalCollection),
-      detail: "Across all recorded years",
+      detail: "Profit + savings, all years",
       icon: CircleDollarSign,
       iconClass: "bg-[#e0f2fe] text-[#0369a1]",
       valueClass: "text-[#0f766e]",
