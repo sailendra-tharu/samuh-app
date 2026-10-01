@@ -81,6 +81,23 @@ export default function SavingDetails() {
     activePage * pageSize
   );
 
+  const totalCollection = useMemo(() => {
+    return visibleSavings.reduce((acc, s) => {
+      const fine = getRemainingFine(s.fineIn, s.fineOut);
+      const payment = s.paymentReceived ?? 0;
+      const bonus = s.bonus ?? 0;
+      return acc + fine + payment + bonus;
+    }, 0);
+  }, [visibleSavings]);
+
+  const paymentPlusBonusAllTime = useMemo(() => {
+    return savings.reduce((acc, s) => {
+      const payment = s.paymentReceived ?? 0;
+      const bonus = s.bonus ?? 0;
+      return acc + payment + bonus;
+    }, 0);
+  }, [savings]);
+
   const exportSavingsDetails = () => {
     if (visibleSavings.length === 0) return;
 
@@ -179,6 +196,17 @@ export default function SavingDetails() {
               <Download className="h-4 w-4" />
               Export PDF
             </button>
+          </div>
+        </div>
+
+        <div className="mb-4 flex items-center justify-end gap-6">
+          
+
+          <div className="text-right">
+            <p className="text-sm font-medium text-slate-600">Payment Received + Bonus (All time)</p>
+            <p className="mt-1 text-lg font-semibold text-slate-800">
+              {formatAmount(paymentPlusBonusAllTime)}
+            </p>
           </div>
         </div>
 
