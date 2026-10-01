@@ -38,7 +38,7 @@ const fixedADHolidays: FixedHoliday[] = [
 // { start: "2026-10-20", end: "2026-10-24", name: "Dashain", greeting: "Happy Dashain!" },
 const datedHolidays: DatedHoliday[] = [
   // TEST ONLY: remove before release.
-  { start: "2026-09-30", name: "Test Celebration", greeting: "Happy Testing Day!" },
+  { start: "2026-10-01", name: "Test Celebration", greeting: "Happy Testing Day!" },
 ];
 
 const toISODate = (date: Date) => {

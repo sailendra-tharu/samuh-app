@@ -202,6 +202,7 @@ export default function SavingForm({
               name="bonus"
               value={form.bonus}
               onChange={handleChange}
+              step="0.01"
             />
             <NumberField
               label="Fine Out"
@@ -275,6 +276,7 @@ export default function SavingForm({
               name="bonus"
               value={form.bonus}
               onChange={handleChange}
+              step="0.01"
             />
           </div>
 
@@ -335,6 +337,7 @@ type NumberFieldProps = {
   name: string;
   value: number | null;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  step?: string;
 };
 
 type TextFieldProps = {
@@ -368,7 +371,7 @@ function TextField({
   );
 }
 
-function NumberField({ label, name, value, onChange }: NumberFieldProps) {
+function NumberField({ label, name, value, onChange, step = "1" }: NumberFieldProps) {
   return (
     <div>
       <label className="mb-1 block text-sm font-medium text-gray-700">
@@ -380,7 +383,7 @@ function NumberField({ label, name, value, onChange }: NumberFieldProps) {
         value={value ?? ""}
         onChange={onChange}
         min="0"
-        step="1"
+        step={step}
         className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
       />
     </div>
