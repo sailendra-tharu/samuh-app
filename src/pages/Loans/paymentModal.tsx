@@ -113,6 +113,17 @@ export default function PaymentForm({
     }));
   };
 
+  const handleInterestPaidChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const { value } = event.target;
+
+    setForm((previous) => ({
+      ...previous,
+      interestPaid: value === "" ? null : Number(value),
+    }));
+  };
+
   const handleRenewalPaidChange = (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
@@ -211,7 +222,6 @@ export default function PaymentForm({
           value={form.finePaid ?? ""}
           onChange={handleFinePaidChange}
           min="0"
-          max={calculateRemainingFine(loan.fineIn, loan.fineOut)}
           step="1"
           placeholder="Enter fine paid"
           className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
@@ -225,11 +235,17 @@ export default function PaymentForm({
         <label className="mb-1 block text-sm font-medium text-gray-700">
           Interest
         </label>
-        <div className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-900">
-          {(loan.interest ?? 0).toLocaleString()}
-        </div>
+        <input
+          type="number"
+          value={form.interestPaid ?? ""}
+          onChange={handleInterestPaidChange}
+          min="0"
+          step="1"
+          placeholder="Enter interest paid"
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+        />
         <p className="mt-1 text-xs text-gray-500">
-          Automatically populated from the loan Interest value and recorded when this payment is saved.
+          Starts with the loan Interest value; change it to what was actually paid.
         </p>
       </div>
 
@@ -242,7 +258,6 @@ export default function PaymentForm({
           value={form.renewalPaid ?? ""}
           onChange={handleRenewalPaidChange}
           min="0"
-          max={remainingRenewalInterest}
           step="1"
           placeholder="Enter renewal amount paid"
           className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"

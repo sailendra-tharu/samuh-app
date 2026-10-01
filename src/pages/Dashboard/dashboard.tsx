@@ -184,7 +184,11 @@ function Dashboard() {
       (total, investment) => total + (getInvestmentGainOrLoss(investment) ?? 0),
       0
     );
-  const totalCollection = totalProfit + totalSavings;
+  const totalBonus = savings.reduce(
+    (total, saving) => total + (saving.bonus ?? 0),
+    0
+  );
+  const totalCollection = totalProfit + totalSavings + totalBonus;
   const savingsThisMonth = savings.reduce((total, saving) => {
     const currentBS = NepaliDate.now();
 
@@ -299,7 +303,7 @@ function Dashboard() {
     {
       label: "Total collection",
       value: formatCurrency(totalCollection),
-      detail: "Profit + savings, all years",
+      detail: `Profit + savings + ${formatCurrency(totalBonus)} bonus, all years`,
       icon: CircleDollarSign,
       iconClass: "bg-[#e0f2fe] text-[#0369a1]",
       valueClass: "text-[#0f766e]",
