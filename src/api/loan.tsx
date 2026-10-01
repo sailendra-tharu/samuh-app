@@ -281,7 +281,9 @@ const toLoan = (loan: RawLoan): Loan => {
     principalAmount,
     fineIn,
     fineOut,
-    interest: calculateLoanInterest(remainingPrincipal),
+    // A saved interest may be a manual override; payments keep it in sync.
+    interest:
+      toNumberOrNull(loan.interest) ?? calculateLoanInterest(remainingPrincipal),
     interestPaid,
     // A saved EMI may be a manual override, so it wins over the calculated one.
     emi:
@@ -476,7 +478,7 @@ const toLoanRow = (loan: Loan, memberId: number) => {
   );
 
   return {
-    interest: calculateLoanInterest(remainingPrincipal),
+    interest: loan.interest ?? calculateLoanInterest(remainingPrincipal),
     loan_status: calculateLoanStatus(
       loan.status,
       remainingPrincipal,
@@ -490,6 +492,7 @@ const toLoanRow = (loan: Loan, memberId: number) => {
     principal_amount: loan.principalAmount,
     fine_in: loan.fineIn,
     fine_out: loan.fineOut ?? 0,
+    renewal_paid: loan.renewalPaid ?? 0,
     emi: loan.emi ?? calculateLoanEmi(loan.principalAmount, loan.loanTermYears),
   };
 };
@@ -498,11 +501,22 @@ export async function createLoan(loan: Loan) {
   const member = await resolveMember(loan);
   await ensureMemberCanTakeLoan(member.id);
 
-  const { data, error } = await supabase
+  const row = toLoanRow(loan, member.id);
+  let { data, error } = await supabase
     .from("loans")
-    .insert(toLoanRow(loan, member.id))
+    .insert(row)
     .select(loanBaseSelect)
     .single();
+
+  if (error && isMissingRenewalPaidColumnError(error)) {
+    const legacyRow: Partial<typeof row> = { ...row };
+    delete legacyRow.renewal_paid;
+    ({ data, error } = await supabase
+      .from("loans")
+      .insert(legacyRow)
+      .select(loanBaseSelect)
+      .single());
+  }
 
   if (error) throw error;
 
@@ -517,12 +531,24 @@ export async function updateLoan(loan: Loan) {
   const member = await resolveMember(loan);
   await ensureMemberCanTakeLoan(member.id, loan.id);
 
-  const { data, error } = await supabase
+  const row = toLoanRow(loan, member.id);
+  let { data, error } = await supabase
     .from("loans")
-    .update(toLoanRow(loan, member.id))
+    .update(row)
     .eq("id", loan.id)
     .select(loanBaseSelect)
     .single();
+
+  if (error && isMissingRenewalPaidColumnError(error)) {
+    const legacyRow: Partial<typeof row> = { ...row };
+    delete legacyRow.renewal_paid;
+    ({ data, error } = await supabase
+      .from("loans")
+      .update(legacyRow)
+      .eq("id", loan.id)
+      .select(loanBaseSelect)
+      .single());
+  }
 
   if (error) throw error;
 
@@ -752,8 +778,13 @@ export async function createLoanPayment(payment: LoanPayment) {
     const loanUpdates: {
       fine_out?: number;
       renewal_paid?: number;
+      interest?: number | null;
       loan_status: LoanStatus;
     } = { loan_status: loanStatus };
+
+    if (payment.amount > 0) {
+      loanUpdates.interest = calculateLoanInterest(nextRemainingPrincipal);
+    }
 
     if (payment.finePaid > 0) {
       loanUpdates.fine_out = nextFineOut;

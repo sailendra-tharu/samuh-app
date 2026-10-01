@@ -91,9 +91,11 @@ export default function LoanForm({
         loan.principalAmount,
         loan.paidAmount
       ),
-      interest: calculateLoanInterest(
-        calculateRemainingPrincipal(loan.principalAmount, loan.paidAmount)
-      ),
+      interest:
+        loan.interest ??
+        calculateLoanInterest(
+          calculateRemainingPrincipal(loan.principalAmount, loan.paidAmount)
+        ),
       emi:
         loan.emi ??
         calculateLoanEmi(loan.principalAmount, loan.loanTermYears),
@@ -226,11 +228,16 @@ export default function LoanForm({
           onChange={handleChange}
         />
         <NumberField
-          label="Interest (Auto)"
+          label="Interest"
           name="interest"
           value={form.interest}
           onChange={handleChange}
-          readOnly
+        />
+        <NumberField
+          label="Renewal Paid"
+          name="renewalPaid"
+          value={form.renewalPaid}
+          onChange={handleChange}
         />
         <NumberField
           label="Monthly EMI"

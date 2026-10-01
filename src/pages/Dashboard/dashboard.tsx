@@ -8,6 +8,7 @@ import {
   CircleDollarSign,
   Clock3,
   HandCoins,
+  TrendingUp,
   Users,
   Wallet,
 } from "lucide-react";
@@ -274,6 +275,15 @@ function Dashboard() {
       accent: "#0369a1",
     },
     {
+      label: "Total profit",
+      value: formatCompactCurrency(totalProfit),
+      detail: "Fines, fees, interest & investments, all years",
+      icon: TrendingUp,
+      iconClass: "bg-[#dcfce7] text-[#15803d]",
+      valueClass: totalProfit < 0 ? "text-[#dc2626]" : "text-[#15803d]",
+      accent: "#15803d",
+    },
+    {
       label: "Total savings",
       value: formatCompactCurrency(totalSavings),
       detail: `${formatCurrency(savingsThisMonth)} collected this month`,
@@ -336,7 +346,7 @@ function Dashboard() {
         <div className="absolute bottom-0 left-1/2 h-px w-1/3 bg-white/10" />
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {statCards.map((stat) => {
           const Icon = stat.icon;
 
