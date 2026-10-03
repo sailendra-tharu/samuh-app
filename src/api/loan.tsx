@@ -215,7 +215,9 @@ export const isLoanTermExpired = (
   if (!loanTermYears) return false;
 
   const maturityDate = new Date(`${loanDate}T00:00:00`);
-  maturityDate.setFullYear(maturityDate.getFullYear() + loanTermYears);
+  maturityDate.setMonth(
+    maturityDate.getMonth() + Math.round(loanTermYears * 12)
+  );
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);

@@ -213,6 +213,7 @@ export default function LoanForm({
           name="loanTermYears"
           value={form.loanTermYears}
           onChange={handleChange}
+          step="0.01"
           required
         />
         <NumberField
@@ -304,6 +305,7 @@ type NumberFieldProps = {
   onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   readOnly?: boolean;
   required?: boolean;
+  step?: string;
 };
 
 function NumberField({
@@ -313,6 +315,7 @@ function NumberField({
   onChange,
   readOnly = false,
   required = false,
+  step = "1",
 }: NumberFieldProps) {
   return (
     <div>
@@ -327,7 +330,7 @@ function NumberField({
         readOnly={readOnly}
         required={required}
         min="0"
-        step="1"
+        step={step}
         className={`w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${readOnly ? "cursor-not-allowed bg-gray-100" : ""}`}
       />
     </div>
