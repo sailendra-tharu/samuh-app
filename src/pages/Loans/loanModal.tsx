@@ -178,7 +178,6 @@ export default function LoanForm({
           placeholder="Enter member name"
           list="registered-loan-member-names"
           className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-          required
         />
         <datalist id="registered-loan-member-names">
           {members.map((member) => (
@@ -206,7 +205,6 @@ export default function LoanForm({
           name="principalAmount"
           value={form.principalAmount}
           onChange={handleChange}
-          required
         />
         <NumberField
           label="Loan Term (Years)"
@@ -214,7 +212,6 @@ export default function LoanForm({
           value={form.loanTermYears}
           onChange={handleChange}
           step="0.01"
-          required
         />
         <NumberField
           label="Fine In"
@@ -245,7 +242,6 @@ export default function LoanForm({
           name="emi"
           value={form.emi}
           onChange={handleChange}
-          required
         />
       </div>
 

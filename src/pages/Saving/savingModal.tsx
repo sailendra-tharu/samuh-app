@@ -68,7 +68,6 @@ export default function SavingForm({
 }: SavingFormProps) {
   const [form, setForm] = useState<Saving>(createEmptyForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [dateError, setDateError] = useState("");
   // Next-month only: new fine charged this month, added to the carried fine.
   const [newFineIn, setNewFineIn] = useState<number | null>(0);
   const { members } = useMembers();
@@ -78,7 +77,6 @@ export default function SavingForm({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm(initialData ?? createEmptyForm());
     setNewFineIn(0);
-    setDateError("");
   }, [initialData]);
 
   useEffect(() => {
@@ -126,12 +124,6 @@ export default function SavingForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (variant === "next-month" && !form.date) {
-      setDateError("Please select a saving date.");
-      return;
-    }
-
-    setDateError("");
     setIsSubmitting(true);
 
     const addedFine = variant === "next-month" ? (newFineIn ?? 0) : 0;
@@ -165,7 +157,6 @@ export default function SavingForm({
           placeholder="Enter member name"
           list="registered-member-names"
           className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-          required
         />
         <datalist id="registered-member-names">
           {members.map((member) => (
@@ -183,14 +174,12 @@ export default function SavingForm({
             <DatePicker
               value={toBSDate(form.date)}
               onChange={(bsDate) => {
-                setDateError("");
                 setForm((previous) => ({
                   ...previous,
                   date: toADDate(bsDate),
                 }));
               }}
               allowFutureDates
-              error={dateError}
               placeholder="Select saving date"
             />
             {form.fineIn !== null && (

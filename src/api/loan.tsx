@@ -40,7 +40,7 @@ type RawLoan = {
   id: number;
   loan_status?: string | null;
   renewed_from_loan_id?: number | null;
-  member_id: number;
+  member_id: number | null;
   loan_date: string;
   loan_term_years?: number | string | null;
   description: string | null;
@@ -239,6 +239,14 @@ export const isLoanTermExpired = (
   today.setHours(0, 0, 0, 0);
 
   return today >= maturityDate;
+};
+
+const getTodayDate = () => {
+  const today = new Date();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+
+  return `${today.getFullYear()}-${month}-${day}`;
 };
 
 const toNumberOrNull = (value: number | string | null | undefined) =>
@@ -442,9 +450,8 @@ async function resolveMember(loan: Loan) {
 
   const memberName = loan.name.trim();
 
-  if (!memberName) {
-    throw new Error("Member name is required for this loan.");
-  }
+  // A loan may be saved without a member and linked later.
+  if (!memberName) return null;
 
   const { data, error } = await supabase
     .from("members")
@@ -511,7 +518,7 @@ async function ensureMemberCanTakeLoan(memberId: number, currentLoanId?: number)
   }
 }
 
-const toLoanRow = (loan: Loan, memberId: number) => {
+const toLoanRow = (loan: Loan, memberId: number | null) => {
   // Interest is based on the current balance, not the original principal.
   // paidAmount comes from the existing payment history when updating a loan.
   const remainingPrincipal = calculateRemainingPrincipal(
@@ -541,9 +548,9 @@ const toLoanRow = (loan: Loan, memberId: number) => {
 
 export async function createLoan(loan: Loan) {
   const member = await resolveMember(loan);
-  await ensureMemberCanTakeLoan(member.id);
+  if (member) await ensureMemberCanTakeLoan(member.id);
 
-  const row = toLoanRow(loan, member.id);
+  const row = toLoanRow(loan, member?.id ?? null);
   let { data, error } = await supabase
     .from("loans")
     .insert(row)
@@ -571,9 +578,9 @@ export async function updateLoan(loan: Loan) {
   }
 
   const member = await resolveMember(loan);
-  await ensureMemberCanTakeLoan(member.id, loan.id);
+  if (member) await ensureMemberCanTakeLoan(member.id, loan.id);
 
-  const row = toLoanRow(loan, member.id);
+  const row = toLoanRow(loan, member?.id ?? null);
   let { data, error } = await supabase
     .from("loans")
     .update(row)
@@ -630,17 +637,8 @@ export async function createLoanPayment(payment: LoanPayment) {
     throw new Error("Renewal paid must be a whole number of 0 or more.");
   }
 
-  if (
-    payment.amount === 0 &&
-    fineInAdded === 0 &&
-    payment.finePaid === 0 &&
-    payment.interestPaid === 0 &&
-    payment.renewalPaid === 0
-  ) {
-    throw new Error(
-      "Enter a principal, fine in, fine, interest, or renewal payment."
-    );
-  }
+  // No field is required: a missing date falls back to today.
+  const paymentDate = payment.paymentDate || getTodayDate();
 
   let renewalPaidColumnAvailable = true;
   let { data: loan, error: loanError } = await supabase
@@ -669,8 +667,14 @@ export async function createLoanPayment(payment: LoanPayment) {
 
   if (loanError) throw loanError;
 
-  if (!loan || loan.principal_amount === null) {
+  if (!loan) {
     throw new Error("The selected loan no longer exists.");
+  }
+
+  if (loan.principal_amount === null && payment.amount > 0) {
+    throw new Error(
+      "Set the loan's principal amount before recording a principal payment."
+    );
   }
 
   const { data: previousPayments, error: paymentsError } = await supabase
@@ -758,7 +762,7 @@ export async function createLoanPayment(payment: LoanPayment) {
   const description = payment.description?.trim() ?? "";
   const paymentInsert = {
     loan_id: payment.loanId,
-    payment_date: payment.paymentDate,
+    payment_date: paymentDate,
     amount: payment.amount,
     fine_paid: payment.finePaid,
     interest_paid: payment.interestPaid,
@@ -800,7 +804,7 @@ export async function createLoanPayment(payment: LoanPayment) {
       .from("loan_payments")
       .insert({
         loan_id: payment.loanId,
-        payment_date: payment.paymentDate,
+        payment_date: paymentDate,
         amount: payment.amount,
         fine_paid: payment.finePaid,
         renewal_paid: payment.renewalPaid,
@@ -823,7 +827,7 @@ export async function createLoanPayment(payment: LoanPayment) {
       .from("loan_payments")
       .insert({
         loan_id: payment.loanId,
-        payment_date: payment.paymentDate,
+        payment_date: paymentDate,
         amount: payment.amount,
       })
       .select()

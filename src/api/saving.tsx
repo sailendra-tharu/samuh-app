@@ -109,6 +109,15 @@ export async function getSavingsByMemberId(
   });
 }
 
+// No field is required: a missing date falls back to today.
+const getTodayDate = () => {
+  const today = new Date();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+
+  return `${today.getFullYear()}-${month}-${day}`;
+};
+
 async function resolveMember(saving: Saving) {
   if (saving.memberId !== null) {
     const { data, error } = await supabase
@@ -128,9 +137,8 @@ async function resolveMember(saving: Saving) {
 
   const memberName = saving.name.trim();
 
-  if (!memberName) {
-    throw new Error("Member name is required for this saving.");
-  }
+  // A saving may be recorded without a member and linked later.
+  if (!memberName) return null;
 
   const { data, error } = await supabase
     .from("members")
@@ -162,11 +170,11 @@ export async function createSaving(saving: Saving) {
   const { data, error } = await supabase
     .from("saving")
     .insert({
-      member_id: member.id,
-      name: member.name,
+      member_id: member?.id ?? null,
+      name: member?.name ?? "",
       group_name: saving.groupName || null,
       new_member: saving.newMember || null,
-      date: saving.date,
+      date: saving.date || getTodayDate(),
       description: saving.description || null,
       fine_in: saving.fineIn,
       fine_out: saving.fineOut,
@@ -192,11 +200,11 @@ export async function updateSaving(saving: Saving) {
   const { data, error } = await supabase
     .from("saving")
     .update({
-      member_id: member.id,
-      name: member.name,
+      member_id: member?.id ?? null,
+      name: member?.name ?? "",
       group_name: saving.groupName || null,
       new_member: saving.newMember || null,
-      date: saving.date,
+      date: saving.date || getTodayDate(),
       description: saving.description || null,
       fine_in: saving.fineIn,
       fine_out: saving.fineOut,
