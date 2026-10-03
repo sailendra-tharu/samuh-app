@@ -185,10 +185,6 @@ function Dashboard() {
       0
     );
   const totalCollection = totalProfit + totalSavings;
-  const totalBonus = savings.reduce(
-    (total, saving) => total + (saving.bonus ?? 0),
-    0
-  );
   const totalLoanPrincipal = loans.reduce(
     (total, loan) => total + (loan.principalAmount ?? 0),
     0
@@ -312,9 +308,9 @@ function Dashboard() {
       accent: "#15803d",
     },
     {
-      label: "Total savings + bonus",
-      value: formatCurrency(totalSavings + totalBonus),
-      detail: `${formatCurrency(totalSavings)} savings + ${formatCurrency(totalBonus)} bonus`,
+      label: "Total savings",
+      value: formatCurrency(totalSavings),
+      detail: "Payment received, all years",
       icon: Wallet,
       iconClass: "bg-[#fff4da] text-[#bf7b08]",
       valueClass: "text-[#087b55]",

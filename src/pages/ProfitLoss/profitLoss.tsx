@@ -217,6 +217,7 @@ function ProfitLoss() {
   const [actionError, setActionError] = useState("");
   const [overviewPage, setOverviewPage] = useState(1);
   const [detailsPage, setDetailsPage] = useState(1);
+  const [historyYear, setHistoryYear] = useState<number | null>(null);
   const pageSize = 10;
   const { canWrite } = useSectionAccess();
   const canWriteProfitLoss = canWrite("profit-loss");
@@ -340,6 +341,70 @@ function ProfitLoss() {
   const annualTotalCollections = annualRows.reduce(
     (total, row) => total + row.totalCollections,
     0
+  );
+  // Every B.S. year that has a saving, loan, payment or loss recorded,
+  // summed from the same monthly summaries as the overview table.
+  const historyYears = Array.from(
+    new Set(
+      [
+        currentYear,
+        ...[
+          ...savings.map((saving) => saving.date),
+          ...loans.flatMap((loan) => [
+            loan.loanDate,
+            ...loan.payments.map((payment) => payment.paymentDate),
+          ]),
+          ...lossEntries.map((entry) => entry.lossDate),
+        ].map((date) => {
+          const key = getBSMonthKey(date);
+
+          return key ? Number(key.slice(0, 4)) : null;
+        }),
+      ].filter((year): year is number => year !== null)
+    )
+  ).sort((first, second) => second - first);
+  const profitHistoryRows = historyYears.map((year) => {
+    const rows = getMonthOptions(year).map((month) => getMonthlySummary(month.key));
+    const sum = (field: keyof Omit<MonthlySummary, "key" | "label">) =>
+      rows.reduce((total, row) => total + row[field], 0);
+
+    return {
+      year,
+      fineOut: sum("fineOut"),
+      newMember: sum("newMember"),
+      renewal: sum("renewal"),
+      interest: sum("interest"),
+      investmentGainOrLoss: sum("investmentGainOrLoss"),
+      profit: sum("profit"),
+      loss: sum("loss"),
+      net: sum("net"),
+    };
+  });
+  const filteredProfitHistoryRows =
+    historyYear === null
+      ? profitHistoryRows
+      : profitHistoryRows.filter((row) => row.year === historyYear);
+  const profitHistoryTotals = filteredProfitHistoryRows.reduce(
+    (totals, row) => ({
+      fineOut: totals.fineOut + row.fineOut,
+      newMember: totals.newMember + row.newMember,
+      renewal: totals.renewal + row.renewal,
+      interest: totals.interest + row.interest,
+      investmentGainOrLoss: totals.investmentGainOrLoss + row.investmentGainOrLoss,
+      profit: totals.profit + row.profit,
+      loss: totals.loss + row.loss,
+      net: totals.net + row.net,
+    }),
+    {
+      fineOut: 0,
+      newMember: 0,
+      renewal: 0,
+      interest: 0,
+      investmentGainOrLoss: 0,
+      profit: 0,
+      loss: 0,
+      net: 0,
+    }
   );
   const selectedSummary = selectedMonthKey
     ? (() => {
@@ -728,6 +793,98 @@ function ProfitLoss() {
             pageSize={pageSize}
             onPageChange={setOverviewPage}
           />
+        </div>
+      </section>
+
+      <section className="min-w-0 rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)]">
+        <div className="border-b border-slate-100 px-5 py-5 sm:px-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-base font-semibold text-slate-900">Profit history</p>
+              <p className="mt-1 text-sm text-slate-500">Year-by-year profit and loss. Select a row to view its months.</p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <select
+                value={historyYear ?? ""}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setHistoryYear(value ? Number(value) : null);
+                }}
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 outline-none focus:border-[#087b55] focus:ring-2 focus:ring-[#b9e5d1] sm:w-32"
+                aria-label="Profit history year"
+              >
+                <option value="">All years</option>
+                {historyYears.map((year) => <option key={year} value={year}>{year}</option>)}
+              </select>
+              <div className="rounded-lg bg-[#e9f8f0] px-3 py-2 text-right">
+                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[#087b55]">
+                  {historyYear === null ? "Total profit, all years" : `Total profit, ${historyYear}`}
+                </p>
+                <p className={`mt-0.5 text-sm font-semibold ${profitHistoryTotals.profit < 0 ? "text-red-600" : "text-[#07583e]"}`}>
+                  {formatCurrency(profitHistoryTotals.profit)}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-full overflow-x-auto overscroll-x-contain">
+          <table className="min-w-[960px] w-full text-left text-sm">
+            <thead className="bg-slate-50 text-xs uppercase tracking-[0.08em] text-slate-500">
+              <tr>
+                <th className="px-5 py-3 font-medium sm:px-6">Year</th>
+                <th className="px-5 py-3 text-right font-medium">Fine Out</th>
+                <th className="px-5 py-3 text-right font-medium">New Member</th>
+                <th className="px-5 py-3 text-right font-medium">Renewal</th>
+                <th className="px-5 py-3 text-right font-medium">Interest</th>
+                <th className="px-5 py-3 text-right font-medium">Investment Gain / Loss</th>
+                <th className="px-5 py-3 text-right font-medium">Profit</th>
+                <th className="px-5 py-3 text-right font-medium">Loss</th>
+                <th className="px-5 py-3 text-right font-medium sm:px-6">Net</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredProfitHistoryRows.map((row) => (
+                <tr
+                  key={row.year}
+                  onClick={() => {
+                    setSelectedYear(row.year);
+                    setSelectedMonth(null);
+                    setOverviewPage(1);
+                    setDetailsPage(1);
+                  }}
+                  className={`cursor-pointer transition hover:bg-slate-50 ${row.year === selectedYear ? "bg-emerald-50/60" : ""}`}
+                >
+                  <td className="px-5 py-4 font-medium text-slate-800 sm:px-6">{row.year}</td>
+                  <td className="px-5 py-4 text-right text-slate-700">{formatCurrency(row.fineOut)}</td>
+                  <td className="px-5 py-4 text-right text-slate-700">{formatCurrency(row.newMember)}</td>
+                  <td className="px-5 py-4 text-right text-slate-700">{formatCurrency(row.renewal)}</td>
+                  <td className="px-5 py-4 text-right text-slate-700">{formatCurrency(row.interest)}</td>
+                  <td className={`px-5 py-4 text-right font-semibold ${row.investmentGainOrLoss >= 0 ? "text-[#087b55]" : "text-red-600"}`}>{formatCurrency(row.investmentGainOrLoss)}</td>
+                  <td className="px-5 py-4 text-right font-semibold text-[#087b55]">{formatCurrency(row.profit)}</td>
+                  <td className="px-5 py-4 text-right font-semibold text-red-600">{formatCurrency(row.loss)}</td>
+                  <td className={`px-5 py-4 text-right font-semibold sm:px-6 ${row.net >= 0 ? "text-[#087b55]" : "text-red-600"}`}>
+                    {formatCurrency(row.net)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot className="border-t border-slate-200 bg-slate-50 font-semibold">
+              <tr>
+                <td className="px-5 py-4 text-slate-900 sm:px-6">{historyYear === null ? "All years" : `Total ${historyYear}`}</td>
+                <td className="px-5 py-4 text-right text-slate-800">{formatCurrency(profitHistoryTotals.fineOut)}</td>
+                <td className="px-5 py-4 text-right text-slate-800">{formatCurrency(profitHistoryTotals.newMember)}</td>
+                <td className="px-5 py-4 text-right text-slate-800">{formatCurrency(profitHistoryTotals.renewal)}</td>
+                <td className="px-5 py-4 text-right text-slate-800">{formatCurrency(profitHistoryTotals.interest)}</td>
+                <td className={`px-5 py-4 text-right ${profitHistoryTotals.investmentGainOrLoss >= 0 ? "text-[#087b55]" : "text-red-600"}`}>{formatCurrency(profitHistoryTotals.investmentGainOrLoss)}</td>
+                <td className="px-5 py-4 text-right text-[#087b55]">{formatCurrency(profitHistoryTotals.profit)}</td>
+                <td className="px-5 py-4 text-right text-red-600">{formatCurrency(profitHistoryTotals.loss)}</td>
+                <td className={`px-5 py-4 text-right sm:px-6 ${profitHistoryTotals.net >= 0 ? "text-[#087b55]" : "text-red-600"}`}>
+                  {formatCurrency(profitHistoryTotals.net)}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
       </section>
 
