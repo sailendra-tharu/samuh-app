@@ -31,6 +31,9 @@ export interface LoanPayment {
   finePaid: number;
   interestPaid: number;
   renewalPaid: number;
+  // New fine charged with this payment; added to the loan's fine_in.
+  fineIn?: number;
+  description?: string;
 }
 
 type RawLoan = {
@@ -58,8 +61,12 @@ type RawLoanPayment = {
   fine_paid?: number | string | null;
   interest_paid?: number | string | null;
   renewal_paid?: number | string | null;
+  fine_in?: number | string | null;
+  description?: string | null;
 };
 
+const detailedLoanSelect =
+  "*, members(name), loan_payments(id, payment_date, amount, fine_paid, interest_paid, renewal_paid, fine_in, description)";
 const loanSelect =
   "*, members(name), loan_payments(id, payment_date, amount, fine_paid, interest_paid, renewal_paid)";
 const withoutInterestPaidLoanSelect =
@@ -109,6 +116,15 @@ const isMissingPaymentBreakdownColumnError = (error: unknown) => {
 
   return (
     missingColumn &&
+    (message.includes("schema cache") || message.includes("does not exist"))
+  );
+};
+
+const isMissingPaymentDetailsColumnError = (error: unknown) => {
+  const message = getSupabaseErrorMessage(error).toLowerCase();
+
+  return (
+    (message.includes("fine_in") || message.includes("description")) &&
     (message.includes("schema cache") || message.includes("does not exist"))
   );
 };
@@ -250,6 +266,11 @@ const toLoan = (loan: RawLoan): Loan => {
       payment.interest_paid === null || payment.interest_paid === undefined
         ? 0
         : Number(payment.interest_paid),
+    fineIn:
+      payment.fine_in === null || payment.fine_in === undefined
+        ? 0
+        : Number(payment.fine_in),
+    description: payment.description ?? "",
   }));
   const paidAmount = (loan.loan_payments ?? []).reduce(
     (total, payment) =>
@@ -299,6 +320,14 @@ const toLoan = (loan: RawLoan): Loan => {
 };
 
 export async function getLoans() {
+  const detailed = await supabase
+    .from("loans")
+    .select(detailedLoanSelect)
+    .order("loan_date", { ascending: false })
+    .order("id", { ascending: false });
+
+  if (!detailed.error) return detailed.data.map(toLoan);
+
   const { data, error } = await supabase
     .from("loans")
     .select(loanSelect)
@@ -338,6 +367,17 @@ export async function getLoans() {
 }
 
 export async function getLoanById(id: number) {
+  const detailed = await supabase
+    .from("loans")
+    .select(detailedLoanSelect)
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!detailed.error) {
+    if (!detailed.data) return null;
+    return toLoan(detailed.data);
+  }
+
   const { data, error } = await supabase
     .from("loans")
     .select(loanSelect)
@@ -572,6 +612,12 @@ export async function createLoanPayment(payment: LoanPayment) {
     throw new Error("Payment amount must be a whole number of 0 or more.");
   }
 
+  const fineInAdded = payment.fineIn ?? 0;
+
+  if (!Number.isInteger(fineInAdded) || fineInAdded < 0) {
+    throw new Error("Fine in must be a whole number of 0 or more.");
+  }
+
   if (!Number.isInteger(payment.finePaid) || payment.finePaid < 0) {
     throw new Error("Fine paid must be a whole number of 0 or more.");
   }
@@ -586,11 +632,14 @@ export async function createLoanPayment(payment: LoanPayment) {
 
   if (
     payment.amount === 0 &&
+    fineInAdded === 0 &&
     payment.finePaid === 0 &&
     payment.interestPaid === 0 &&
     payment.renewalPaid === 0
   ) {
-    throw new Error("Enter a principal, fine, interest, or renewal payment.");
+    throw new Error(
+      "Enter a principal, fine in, fine, interest, or renewal payment."
+    );
   }
 
   let renewalPaidColumnAvailable = true;
@@ -661,10 +710,10 @@ export async function createLoanPayment(payment: LoanPayment) {
 
   const currentFineOut =
     loan.fine_out === null ? 0 : Math.max(0, Number(loan.fine_out));
-  const remainingFine = calculateRemainingFine(
-    loan.fine_in === null ? null : Number(loan.fine_in),
-    currentFineOut
-  );
+  const currentFineIn =
+    loan.fine_in === null ? 0 : Math.max(0, Number(loan.fine_in));
+  const nextFineIn = currentFineIn + fineInAdded;
+  const remainingFine = calculateRemainingFine(nextFineIn, currentFineOut);
 
   const nextRemainingPrincipal = calculateRemainingPrincipal(
     Number(loan.principal_amount),
@@ -706,18 +755,39 @@ export async function createLoanPayment(payment: LoanPayment) {
     );
   }
 
+  const description = payment.description?.trim() ?? "";
+  const paymentInsert = {
+    loan_id: payment.loanId,
+    payment_date: payment.paymentDate,
+    amount: payment.amount,
+    fine_paid: payment.finePaid,
+    interest_paid: payment.interestPaid,
+    renewal_paid: payment.renewalPaid,
+  };
+
   let { data, error } = await supabase
     .from("loan_payments")
     .insert({
-      loan_id: payment.loanId,
-      payment_date: payment.paymentDate,
-      amount: payment.amount,
-      fine_paid: payment.finePaid,
-      interest_paid: payment.interestPaid,
-      renewal_paid: payment.renewalPaid,
+      ...paymentInsert,
+      fine_in: fineInAdded,
+      description: description || null,
     })
     .select()
     .single();
+
+  if (error && isMissingPaymentDetailsColumnError(error)) {
+    if (fineInAdded > 0 || description) {
+      throw new Error(
+        "Fine in and description need the fine_in and description columns in public.loan_payments. Run the Supabase migration first."
+      );
+    }
+
+    ({ data, error } = await supabase
+      .from("loan_payments")
+      .insert(paymentInsert)
+      .select()
+      .single());
+  }
 
   if (error && isMissingInterestPaidColumnError(error) && payment.interestPaid > 0) {
     throw new Error(
@@ -766,10 +836,7 @@ export async function createLoanPayment(payment: LoanPayment) {
   if (error) throw new Error(getSupabaseErrorMessage(error));
 
   const nextFineOut = currentFineOut + payment.finePaid;
-  const nextRemainingFine = calculateRemainingFine(
-    loan.fine_in === null ? null : Number(loan.fine_in),
-    nextFineOut
-  );
+  const nextRemainingFine = calculateRemainingFine(nextFineIn, nextFineOut);
   const loanStatus = calculateLoanStatus(
     loan.loan_status,
     nextRemainingPrincipal,
@@ -778,6 +845,7 @@ export async function createLoanPayment(payment: LoanPayment) {
 
   {
     const loanUpdates: {
+      fine_in?: number;
       fine_out?: number;
       renewal_paid?: number;
       interest?: number | null;
@@ -786,6 +854,10 @@ export async function createLoanPayment(payment: LoanPayment) {
 
     if (payment.amount > 0) {
       loanUpdates.interest = calculateLoanInterest(nextRemainingPrincipal);
+    }
+
+    if (fineInAdded > 0) {
+      loanUpdates.fine_in = nextFineIn;
     }
 
     if (payment.finePaid > 0) {

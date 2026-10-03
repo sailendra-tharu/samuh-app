@@ -16,12 +16,14 @@ type PaymentDetail = {
   key: string;
   paymentDate: string;
   amount: number;
+  fineIn: number;
   finePaid: number;
   interestPaid: number;
   renewalPaid: number;
   remainingPrincipal: number | null;
   interest: number | null;
   monthKey: string;
+  description: string;
 };
 
 const formatAmount = (amount: number | null) =>
@@ -91,12 +93,14 @@ export default function LoanDetails() {
         key: String(payment.id ?? `${payment.paymentDate}-${index}`),
         paymentDate: payment.paymentDate,
         amount: payment.amount,
+        fineIn: payment.fineIn ?? 0,
         finePaid: payment.finePaid,
         interestPaid: payment.interestPaid,
         renewalPaid: payment.renewalPaid,
         remainingPrincipal,
         interest: calculateLoanInterest(remainingPrincipal),
         monthKey: nepaliDate.format("YYYY-MM"),
+        description: payment.description ?? "",
       };
     });
 
@@ -148,20 +152,24 @@ export default function LoanDetails() {
       [
         "Payment Date",
         "Principal Paid",
+        "Fine In",
         "Fine Paid",
         "Interest",
         "Renewal Paid",
         "Remaining Principal",
         "Current Interest",
+        "Description",
       ],
       paymentDetails.map((payment) => [
         new NepaliDate(new Date(payment.paymentDate)).format("DD MMMM YYYY"),
         payment.amount,
+        payment.fineIn,
         payment.finePaid,
         payment.interestPaid,
         payment.renewalPaid,
         payment.remainingPrincipal ?? "",
         payment.interest ?? "",
+        payment.description,
       ])
     );
   };
@@ -261,12 +269,15 @@ export default function LoanDetails() {
         </div>
 
         <div className="max-w-full overflow-x-auto overscroll-x-contain">
-          <table className="min-w-[680px] w-full border-collapse border border-gray-200">
+          <table className="min-w-[900px] w-full border-collapse border border-gray-200">
             <thead className="bg-[#006b45] text-left text-sm text-white">
               <tr>
                 <th className="border-r border-white/20 px-4 py-3">Payment Date</th>
                 <th className="border-r border-white/20 px-4 py-3">
                   Principal Paid
+                </th>
+                <th className="border-r border-white/20 px-4 py-3">
+                  Fine In
                 </th>
                 <th className="border-r border-white/20 px-4 py-3">
                   Fine Paid
@@ -280,7 +291,10 @@ export default function LoanDetails() {
                 <th className="border-r border-white/20 px-4 py-3">
                   Remaining Principal
                 </th>
-                <th className="px-4 py-3">Current Interest</th>
+                <th className="border-r border-white/20 px-4 py-3">
+                  Current Interest
+                </th>
+                <th className="px-4 py-3">Description</th>
               </tr>
             </thead>
             <tbody>
@@ -293,6 +307,9 @@ export default function LoanDetails() {
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700">
                     {formatAmount(payment.amount)}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-700">
+                    {formatAmount(payment.fineIn)}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700">
                     {formatAmount(payment.finePaid)}
@@ -309,13 +326,16 @@ export default function LoanDetails() {
                   <td className="px-4 py-3 text-sm text-gray-700">
                     {formatAmount(payment.interest)}
                   </td>
+                  <td className="max-w-xs whitespace-pre-wrap break-words px-4 py-3 text-sm text-gray-700">
+                    {payment.description || "—"}
+                  </td>
                 </tr>
               ))}
 
               {paymentDetails.length === 0 && (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="px-4 py-8 text-center text-sm text-gray-500"
                   >
                     {selectedYear !== null

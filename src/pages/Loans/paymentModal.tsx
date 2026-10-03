@@ -13,6 +13,8 @@ import DatePicker from "@/component/DatePicker/datepicker";
 export type LoanPaymentDraft = {
   paymentDate: LoanPayment["paymentDate"];
   amount: LoanPayment["amount"] | null;
+  fineIn: number | null;
+  description: string;
   finePaid: LoanPayment["finePaid"] | null;
   interestPaid: LoanPayment["interestPaid"] | null;
   renewalPaid: LoanPayment["renewalPaid"] | null;
@@ -61,6 +63,8 @@ const toADDate = (bsDate: string) => {
 const createEmptyForm = (loan: Loan): LoanPaymentDraft => ({
   paymentDate: formatLocalDate(new Date()),
   amount: loan.emi,
+  fineIn: 0,
+  description: "",
   finePaid: 0,
   interestPaid: loan.interest ?? 0,
   renewalPaid: 0,
@@ -99,6 +103,15 @@ export default function PaymentForm({
     setForm((previous) => ({
       ...previous,
       amount: value === "" ? null : Number(value),
+    }));
+  };
+
+  const handleFineInChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { value } = event.target;
+
+    setForm((previous) => ({
+      ...previous,
+      fineIn: value === "" ? null : Number(value),
     }));
   };
 
@@ -215,6 +228,24 @@ export default function PaymentForm({
 
       <div>
         <label className="mb-1 block text-sm font-medium text-gray-700">
+          Fine In
+        </label>
+        <input
+          type="number"
+          value={form.fineIn ?? ""}
+          onChange={handleFineInChange}
+          min="0"
+          step="1"
+          placeholder="Enter new fine charged"
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+        />
+        <p className="mt-1 text-xs text-gray-500">
+          This amount is added to the loan's Fine In after the payment is saved.
+        </p>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-sm font-medium text-gray-700">
           Fine Paid (Fine Out)
         </label>
         <input
@@ -265,6 +296,24 @@ export default function PaymentForm({
         <p className="mt-1 text-xs text-gray-500">
           Renewal payment is available after the loan term expires.
         </p>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-sm font-medium text-gray-700">
+          Description
+        </label>
+        <textarea
+          value={form.description}
+          onChange={(event) =>
+            setForm((previous) => ({
+              ...previous,
+              description: event.target.value,
+            }))
+          }
+          rows={2}
+          placeholder="Enter description"
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+        />
       </div>
 
       <div>

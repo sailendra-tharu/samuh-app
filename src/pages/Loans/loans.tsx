@@ -204,6 +204,8 @@ function Loans() {
         loanId: paymentLoan.id,
         paymentDate: payment.paymentDate,
         amount: payment.amount ?? 0,
+        fineIn: payment.fineIn ?? 0,
+        description: payment.description,
         finePaid: payment.finePaid ?? 0,
         interestPaid: payment.interestPaid ?? 0,
         renewalPaid: payment.renewalPaid ?? 0,

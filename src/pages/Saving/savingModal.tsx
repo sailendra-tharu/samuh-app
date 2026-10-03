@@ -69,12 +69,15 @@ export default function SavingForm({
   const [form, setForm] = useState<Saving>(createEmptyForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dateError, setDateError] = useState("");
+  // Next-month only: new fine charged this month, added to the carried fine.
+  const [newFineIn, setNewFineIn] = useState<number | null>(0);
   const { members } = useMembers();
 
   useEffect(() => {
     // Reset the form when the modal switches between add and edit modes.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm(initialData ?? createEmptyForm());
+    setNewFineIn(0);
     setDateError("");
   }, [initialData]);
 
@@ -131,9 +134,16 @@ export default function SavingForm({
     setDateError("");
     setIsSubmitting(true);
 
+    const addedFine = variant === "next-month" ? (newFineIn ?? 0) : 0;
+    const submittedForm =
+      addedFine > 0
+        ? { ...form, fineIn: (form.fineIn ?? 0) + addedFine }
+        : form;
+
     try {
-      await onSubmit(form);
+      await onSubmit(submittedForm);
       setForm(createEmptyForm());
+      setNewFineIn(0);
     } catch {
       // The parent displays the error and keeps the form open.
     } finally {
@@ -190,7 +200,30 @@ export default function SavingForm({
             )}
           </div>
 
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Description
+            </label>
+            <input
+              name="description"
+              value={form.description}
+              onChange={handleChange}
+              placeholder="Enter description"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+            />
+          </div>
+
           <div className="grid gap-5 sm:grid-cols-2">
+            <NumberField
+              label="Fine In"
+              name="newFineIn"
+              value={newFineIn}
+              onChange={(event) =>
+                setNewFineIn(
+                  event.target.value === "" ? null : Number(event.target.value)
+                )
+              }
+            />
             <NumberField
               label="Saving Amount"
               name="paymentReceived"
