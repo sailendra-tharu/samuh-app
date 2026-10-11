@@ -891,6 +891,71 @@ export async function createLoanPayment(payment: LoanPayment) {
   } satisfies LoanPayment;
 }
 
+export async function updateLoanPayment(payment: LoanPayment) {
+  if (payment.id === undefined) {
+    throw new Error("Payment id is required to update a payment.");
+  }
+
+  if (payment.loanId === undefined) {
+    throw new Error("Loan id is required to update a payment.");
+  }
+
+  if (!Number.isInteger(payment.amount) || payment.amount < 0) {
+    throw new Error("Payment amount must be a whole number of 0 or more.");
+  }
+
+  if (!Number.isInteger(payment.finePaid) || payment.finePaid < 0) {
+    throw new Error("Fine paid must be a whole number of 0 or more.");
+  }
+
+  if (!Number.isInteger(payment.interestPaid) || payment.interestPaid < 0) {
+    throw new Error("Interest paid must be a whole number of 0 or more.");
+  }
+
+  if (!Number.isInteger(payment.renewalPaid) || payment.renewalPaid < 0) {
+    throw new Error("Renewal paid must be a whole number of 0 or more.");
+  }
+
+  const paymentDate = payment.paymentDate || getTodayDate();
+
+  const { data, error } = await supabase
+    .from("loan_payments")
+    .update({
+      payment_date: paymentDate,
+      amount: payment.amount,
+      fine_paid: payment.finePaid,
+      interest_paid: payment.interestPaid,
+      renewal_paid: payment.renewalPaid,
+      description: payment.description || null,
+    })
+    .eq("id", payment.id)
+    .eq("loan_id", payment.loanId)
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  return {
+    id: data.id,
+    loanId: data.loan_id,
+    paymentDate: data.payment_date,
+    amount: Number(data.amount),
+    finePaid: Number(data.fine_paid),
+    interestPaid: Number(data.interest_paid),
+    renewalPaid: Number(data.renewal_paid),
+    description: data.description,
+  } satisfies LoanPayment;
+}
+
+export async function deleteLoanPayment(id: number) {
+  const { error } = await supabase
+    .from("loan_payments")
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
+}
+
 export async function searchLoans(query: string) {
   const loans = await getLoans();
   const normalizedQuery = query.trim().toLowerCase();

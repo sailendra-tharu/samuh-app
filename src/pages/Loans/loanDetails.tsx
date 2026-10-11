@@ -1,16 +1,21 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, Download } from "lucide-react";
+import { ArrowLeft, Download, Pencil, Trash2 } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import NepaliDate from "nepali-date-converter";
 
 import {
   calculateLoanInterest,
   calculateRemainingPrincipal,
+  type LoanPayment,
 } from "@/api/loan";
 import Loader from "@/component/Loader/loader";
 import Pagination from "@/component/Pagination/pagination";
-import { useLoanDetails } from "@/hook/loan";
+import DeleteModal from "@/component/Modal/deleteModal";
+import Modal from "@/component/Modal/modal";
+import { useLoanDetails, useLoanPayments } from "@/hook/loan";
+import { useSectionAccess } from "@/hook/access";
 import { printPdf } from "@/lib/export";
+import PaymentForm, { type LoanPaymentDraft } from "./paymentModal";
 
 type PaymentDetail = {
   key: string;
@@ -24,6 +29,7 @@ type PaymentDetail = {
   interest: number | null;
   monthKey: string;
   description: string;
+  id?: number;
 };
 
 const formatAmount = (amount: number | null) =>
@@ -62,7 +68,21 @@ export default function LoanDetails() {
   const currentYear = currentBS.getYear();
   const [selectedYear, setSelectedYear] = useState<number | null>(currentYear);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+  const [open, setOpen] = useState(false);
+  const [openDelete, setOpenDelete] = useState(false);
+  const [editingPaymentId, setEditingPaymentId] = useState<number | null>(null);
+  const [deletePaymentId, setDeletePaymentId] = useState<number | null>(null);
+  const [editError, setEditError] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  
   const { loan, isLoading, error } = useLoanDetails(loanId);
+  const { updateLoanPayment, deleteLoanPayment, isDeleting } = useLoanPayments();
+  const { canWrite } = useSectionAccess();
+  const canWriteLoans = canWrite("loans");
+
+  const editingPayment = editingPaymentId
+    ? loan?.payments.find((p) => p.id === editingPaymentId)
+    : null;
 
   const monthOptions = getMonthOptions(selectedYear ?? currentYear);
   const yearOptions = getYearOptions(currentYear);
@@ -70,6 +90,7 @@ export default function LoanDetails() {
     selectedYear !== null && selectedMonth !== null
       ? new NepaliDate(selectedYear, selectedMonth, 1).format("YYYY-MM")
       : null;
+  
   const paymentDetails = useMemo<PaymentDetail[]>(() => {
     if (!loan || selectedYear === null) return [];
 
@@ -101,6 +122,7 @@ export default function LoanDetails() {
         interest: calculateLoanInterest(remainingPrincipal),
         monthKey: nepaliDate.format("YYYY-MM"),
         description: payment.description ?? "",
+        id: payment.id,
       };
     });
 
@@ -115,8 +137,6 @@ export default function LoanDetails() {
       );
       const latestPayment = allPaymentDetails[allPaymentDetails.length - 1];
 
-      // Older payment rows may not have fine_paid/renewal_paid columns.
-      // Keep the table aligned with the aggregate values stored on the loan.
       latestPayment.finePaid += Math.max(
         0,
         (loan.fineOut ?? 0) - recordedFinePaid
@@ -135,14 +155,59 @@ export default function LoanDetails() {
       )
       .reverse();
   }, [loan, selectedMonthKey, selectedYear]);
+  
   const pageSize = 10;
-  const [currentPage, setCurrentPage] = useState(1);
   const pageCount = Math.max(1, Math.ceil(paymentDetails.length / pageSize));
   const activePage = Math.min(currentPage, pageCount);
   const paginatedPaymentDetails = paymentDetails.slice(
     (activePage - 1) * pageSize,
     activePage * pageSize
   );
+
+  const handleEdit = (paymentId: number) => {
+    setEditingPaymentId(paymentId);
+    setEditError("");
+    setOpen(true);
+  };
+
+  const handleDelete = (paymentId: number) => {
+    setDeletePaymentId(paymentId);
+    setOpenDelete(true);
+  };
+
+  const handleEditSubmit = async (payment: LoanPaymentDraft) => {
+    try {
+      const fullPayment: LoanPayment = {
+        id: editingPayment?.id,
+        loanId: loan!.id!,
+        paymentDate: payment.paymentDate,
+        amount: payment.amount ?? 0,
+        finePaid: payment.finePaid ?? 0,
+        interestPaid: payment.interestPaid ?? 0,
+        renewalPaid: payment.renewalPaid ?? 0,
+        fineIn: payment.fineIn ?? undefined,
+        description: payment.description,
+      };
+      await updateLoanPayment(fullPayment);
+      setOpen(false);
+      setEditingPaymentId(null);
+      setEditError("");
+    } catch (error) {
+      setEditError(error instanceof Error ? error.message : "Failed to update payment");
+    }
+  };
+
+  const handleDeleteSubmit = async () => {
+    if (!deletePaymentId) return;
+    
+    try {
+      await deleteLoanPayment(deletePaymentId);
+      setOpenDelete(false);
+      setDeletePaymentId(null);
+    } catch (error) {
+      // Error is handled by the DeleteModal component
+    }
+  };
 
   const exportLoanDetails = () => {
     if (paymentDetails.length === 0) return;
@@ -269,7 +334,7 @@ export default function LoanDetails() {
         </div>
 
         <div className="max-w-full overflow-x-auto overscroll-x-contain">
-          <table className="min-w-[900px] w-full border-collapse border border-gray-200">
+          <table className="min-w-[1000px] w-full border-collapse border border-gray-200">
             <thead className="bg-[#006b45] text-left text-sm text-white">
               <tr>
                 <th className="border-r border-white/20 px-4 py-3">Payment Date</th>
@@ -294,7 +359,8 @@ export default function LoanDetails() {
                 <th className="border-r border-white/20 px-4 py-3">
                   Current Interest
                 </th>
-                <th className="px-4 py-3">Description</th>
+                <th className="border-r border-white/20 px-4 py-3">Description</th>
+                <th className="px-4 py-3">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -329,13 +395,37 @@ export default function LoanDetails() {
                   <td className="max-w-xs whitespace-pre-wrap break-words px-4 py-3 text-sm text-gray-700">
                     {payment.description || "—"}
                   </td>
+                  <td className="px-4 py-3 text-sm">
+                    {canWriteLoans && payment.id && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(payment.id!)}
+                          className="rounded-md p-1 text-blue-600 transition hover:bg-blue-50"
+                          title="Edit"
+                          aria-label="Edit payment"
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(payment.id!)}
+                          className="rounded-md p-1 text-red-600 transition hover:bg-red-50"
+                          title="Delete"
+                          aria-label="Delete payment"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    )}
+                  </td>
                 </tr>
               ))}
 
               {paymentDetails.length === 0 && (
                 <tr>
                   <td
-                    colSpan={9}
+                    colSpan={10}
                     className="px-4 py-8 text-center text-sm text-gray-500"
                   >
                     {selectedYear !== null
@@ -355,6 +445,31 @@ export default function LoanDetails() {
           onPageChange={setCurrentPage}
         />
       </section>
+
+      {open && editingPayment && loan && (
+        <Modal isOpen={open} onClose={() => setOpen(false)}>
+          <PaymentForm
+            loan={loan}
+            initialPayment={editingPayment}
+            onSubmit={async (payment) => {
+              await handleEditSubmit(payment);
+            }}
+            onCancel={() => setOpen(false)}
+            error={editError}
+          />
+        </Modal>
+      )}
+
+      {openDelete && deletePaymentId && (
+        <DeleteModal
+          open={openDelete}
+          onClose={() => setOpenDelete(false)}
+          onConfirm={handleDeleteSubmit}
+          isLoading={isDeleting}
+          title="Delete Payment"
+          message="Are you sure you want to delete this payment? This action cannot be undone."
+        />
+      )}
     </div>
   );
 }

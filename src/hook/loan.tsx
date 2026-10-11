@@ -9,11 +9,14 @@ import {
   createLoan,
   createLoanPayment,
   deleteLoan,
+  deleteLoanPayment,
   getLoans,
   getLoanById,
   searchLoans,
   updateLoan,
+  updateLoanPayment,
   type Loan,
+  type LoanPayment,
 } from "@/api/loan";
 
 export function useLoans() {
@@ -108,5 +111,29 @@ export function useLoanDetails(loanId?: number) {
     loan: loanQuery.data ?? null,
     isLoading: loanQuery.isLoading,
     error: loanQuery.error,
+  };
+}
+
+export function useLoanPayments() {
+  const queryClient = useQueryClient();
+
+  const updateMutation = useMutation({
+    mutationFn: updateLoanPayment,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["loans"] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteLoanPayment,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["loans"] });
+    },
+  });
+
+  return {
+    updateLoanPayment: updateMutation.mutateAsync,
+    deleteLoanPayment: deleteMutation.mutateAsync,
+    isDeleting: deleteMutation.isPending,
   };
 }

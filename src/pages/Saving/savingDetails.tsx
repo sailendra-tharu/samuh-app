@@ -1,14 +1,18 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, Download } from "lucide-react";
+import { ArrowLeft, Download, Pencil, Trash2 } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import NepaliDate from "nepali-date-converter";
 
 import Loader from "@/component/Loader/loader";
 import Pagination from "@/component/Pagination/pagination";
+import DeleteModal from "@/component/Modal/deleteModal";
+import Modal from "@/component/Modal/modal";
 import type { Saving } from "@/api/saving";
 import { useMembers } from "@/hook/member";
-import { useMemberSavings } from "@/hook/saving";
+import { useMemberSavings, useSavings } from "@/hook/saving";
+import { useSectionAccess } from "@/hook/access";
 import { printPdf } from "@/lib/export";
+import SavingForm from "./savingModal";
 
 const formatAmount = (amount: number | null) =>
   (amount ?? 0).toLocaleString();
@@ -37,12 +41,25 @@ export default function SavingDetails() {
   const currentYear = currentBS.getYear();
   const [selectedYear, setSelectedYear] = useState<number | null>(currentYear);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+  const [open, setOpen] = useState(false);
+  const [openDelete, setOpenDelete] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [editError, setEditError] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  
   const { members, isLoading: membersLoading } = useMembers();
   const memberName = members.find((item) => item.id === memberId)?.name;
   const { savings, isLoading: savingsLoading } = useMemberSavings(
     memberId,
     memberName
   );
+  const { updateSaving, deleteSaving, isDeleting } = useSavings();
+  const { canWrite } = useSectionAccess();
+  const canWriteSavings = canWrite("savings");
+  const editingSaving = editingId
+    ? savings.find((s) => s.id === editingId)
+    : null;
 
   const monthOptions = getMonthOptions(selectedYear ?? currentYear);
   const yearOptions = getYearOptions(currentYear);
@@ -50,6 +67,7 @@ export default function SavingDetails() {
     selectedYear !== null && selectedMonth !== null
       ? new NepaliDate(selectedYear, selectedMonth, 1).format("YYYY-MM")
       : null;
+  
   const visibleSavings = useMemo<Saving[]>(
     () =>
       selectedYear !== null
@@ -72,8 +90,8 @@ export default function SavingDetails() {
         : [],
     [savings, selectedMonthKey, selectedYear]
   );
+  
   const pageSize = 10;
-  const [currentPage, setCurrentPage] = useState(1);
   const pageCount = Math.max(1, Math.ceil(visibleSavings.length / pageSize));
   const activePage = Math.min(currentPage, pageCount);
   const paginatedSavings = visibleSavings.slice(
@@ -88,6 +106,41 @@ export default function SavingDetails() {
       return acc + payment + bonus;
     }, 0);
   }, [savings]);
+
+  const handleEdit = (savingId: number) => {
+    setEditingId(savingId);
+    setEditError("");
+    setOpen(true);
+  };
+
+  const handleDelete = (savingId: number) => {
+    setDeleteId(savingId);
+
+    setOpenDelete(true);
+  };
+
+  const handleEditSubmit = async (updatedSaving: Saving) => {
+    try {
+      await updateSaving(updatedSaving);
+      setOpen(false);
+      setEditingId(null);
+      setEditError("");
+    } catch (error) {
+      setEditError(error instanceof Error ? error.message : "Failed to update saving");
+    }
+  };
+
+  const handleDeleteSubmit = async () => {
+    if (!deleteId) return;
+    
+    try {
+      await deleteSaving(deleteId);
+      setOpenDelete(false);
+      setDeleteId(null);
+    } catch (error) {
+      // Error is handled by the DeleteModal component
+    }
+  };
 
   const exportSavingsDetails = () => {
     if (visibleSavings.length === 0) return;
@@ -191,8 +244,6 @@ export default function SavingDetails() {
         </div>
 
         <div className="mb-4 flex items-center justify-end gap-6">
-          
-
           <div className="text-right">
             <p className="text-sm font-medium text-slate-600">Total Collection</p>
             <p className="text-xs text-slate-500">Total saving + bonus</p>
@@ -203,7 +254,7 @@ export default function SavingDetails() {
         </div>
 
         <div className="max-w-full overflow-x-auto overscroll-x-contain">
-          <table className="min-w-[640px] w-full border-collapse border border-gray-200">
+          <table className="min-w-[850px] w-full border-collapse border border-gray-200">
             <thead className="bg-[#006b45] text-left text-sm text-white">
               <tr>
                 <th className="border-r border-white/20 px-4 py-3">Date</th>
@@ -215,7 +266,8 @@ export default function SavingDetails() {
                   Payment Received
                 </th>
                 <th className="border-r border-white/20 px-4 py-3">Bonus</th>
-                <th className="px-4 py-3">Description</th>
+                <th className="border-r border-white/20 px-4 py-3">Description</th>
+                <th className="px-4 py-3">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -248,13 +300,37 @@ export default function SavingDetails() {
                   <td className="px-4 py-3 text-sm text-gray-700">
                     {saving.description || "—"}
                   </td>
+                  <td className="px-4 py-3 text-sm">
+                    {canWriteSavings && saving.id && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(saving.id!)}
+                          className="rounded-md p-1 text-blue-600 transition hover:bg-blue-50"
+                          title="Edit"
+                          aria-label="Edit saving"
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(saving.id!)}
+                          className="rounded-md p-1 text-red-600 transition hover:bg-red-50"
+                          title="Delete"
+                          aria-label="Delete saving"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    )}
+                  </td>
                 </tr>
               ))}
 
               {visibleSavings.length === 0 && (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="px-4 py-8 text-center text-sm text-gray-500"
                   >
                     {selectedYear !== null
@@ -274,6 +350,28 @@ export default function SavingDetails() {
           onPageChange={setCurrentPage}
         />
       </section>
+
+      {open && editingSaving && (
+        <Modal isOpen={open} onClose={() => setOpen(false)}>
+          <SavingForm
+            initialData={editingSaving}
+            onSubmit={handleEditSubmit}
+            onCancel={() => setOpen(false)}
+            error={editError}
+          />
+        </Modal>
+      )}
+
+      {openDelete && deleteId && (
+        <DeleteModal
+          open={openDelete}
+          onClose={() => setOpenDelete(false)}
+          onConfirm={handleDeleteSubmit}
+          isLoading={isDeleting}
+          title="Delete Saving"
+          message="Are you sure you want to delete this saving record? This action cannot be undone."
+        />
+      )}
     </div>
   );
 }

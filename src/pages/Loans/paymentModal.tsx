@@ -22,6 +22,7 @@ export type LoanPaymentDraft = {
 
 type PaymentFormProps = {
   loan: Loan;
+  initialPayment?: LoanPayment;
   onSubmit: (payment: LoanPaymentDraft) => void | Promise<void>;
   onCancel: () => void;
   error?: string;
@@ -72,13 +73,25 @@ const createEmptyForm = (loan: Loan): LoanPaymentDraft => ({
 
 export default function PaymentForm({
   loan,
+  initialPayment,
   onSubmit,
   onCancel,
   error,
 }: PaymentFormProps) {
-  const [form, setForm] = useState<LoanPaymentDraft>(() =>
-    createEmptyForm(loan)
-  );
+  const [form, setForm] = useState<LoanPaymentDraft>(() => {
+    if (initialPayment) {
+      return {
+        paymentDate: initialPayment.paymentDate,
+        amount: initialPayment.amount,
+        fineIn: initialPayment.fineIn ?? 0,
+        description: initialPayment.description ?? "",
+        finePaid: initialPayment.finePaid,
+        interestPaid: initialPayment.interestPaid,
+        renewalPaid: initialPayment.renewalPaid,
+      };
+    }
+    return createEmptyForm(loan);
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const renewalIsDue =
     loan.remainingPrincipal !== null &&
@@ -94,8 +107,20 @@ export default function PaymentForm({
   useEffect(() => {
     // Reset the payment form whenever a different loan is selected.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setForm(createEmptyForm(loan));
-  }, [loan]);
+    if (initialPayment) {
+      setForm({
+        paymentDate: initialPayment.paymentDate,
+        amount: initialPayment.amount,
+        fineIn: initialPayment.fineIn ?? 0,
+        description: initialPayment.description ?? "",
+        finePaid: initialPayment.finePaid,
+        interestPaid: initialPayment.interestPaid,
+        renewalPaid: initialPayment.renewalPaid,
+      });
+    } else {
+      setForm(createEmptyForm(loan));
+    }
+  }, [loan, initialPayment]);
 
   const handleAmountChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = event.target;
@@ -150,6 +175,13 @@ export default function PaymentForm({
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+
+    // Validate that amount is not negative (database constraint now allows >= 0)
+    if (form.amount === null || form.amount < 0) {
+      alert("Payment amount cannot be negative");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -210,7 +242,7 @@ export default function PaymentForm({
 
       <div>
         <label className="mb-1 block text-sm font-medium text-gray-700">
-          Payment Amount
+          Payment Amount <span className="text-red-500">*</span>
         </label>
         <input
           type="number"
@@ -222,7 +254,7 @@ export default function PaymentForm({
           className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
         />
         <p className="mt-1 text-xs text-gray-500">
-          Enter 0 if this payment is only for the fine.
+          Enter payment amount (0 or greater).
         </p>
       </div>
 
