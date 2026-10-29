@@ -16,7 +16,6 @@ import {
   updateLoan,
   updateLoanPayment,
   type Loan,
-  type LoanPayment,
 } from "@/api/loan";
 
 export function useLoans() {
